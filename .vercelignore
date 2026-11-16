@@ -1,0 +1,13 @@
+.git/
+.agents/
+.codex/
+.neon
+.env
+.env.*
+backend/.env
+backend/.venv/
+backend/tests/
+**/__pycache__/
+database/*.db*
+Samples/
+frontend/node_modules/

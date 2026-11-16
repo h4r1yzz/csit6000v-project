@@ -116,8 +116,7 @@ def save_plan(body: PlanSave) -> dict:
     with db.connect() as conn:
         # Activation is atomic: a rejected draft cannot deactivate the existing plan.
         conn.execute('UPDATE plans SET is_active=0 WHERE is_active=1')
-        cur = conn.execute('INSERT INTO plans(title,content_json,source,is_active,workflow_id,execution_source) VALUES(?,?,?,1,?,?)', (body.title, db.json_dump(content), 'tacc_qwen' if source in ['llm', 'tacc_qwen'] else 'local_fallback', body.workflow_id, source))
-        plan_id = cur.lastrowid
+        plan_id = db.insert_id(conn, 'INSERT INTO plans(title,content_json,source,is_active,workflow_id,execution_source) VALUES(?,?,?,1,?,?)', (body.title, db.json_dump(content), 'tacc_qwen' if source in ['llm', 'tacc_qwen'] else 'local_fallback', body.workflow_id, source))
     result = plan_row(db.one('SELECT * FROM plans WHERE id=?', (plan_id,)))
     result['validation'] = validation
     return result
@@ -184,7 +183,7 @@ def log_workout(body: WorkoutLog) -> dict:
 
 @app.get('/api/assistant/messages')
 def chat_messages() -> list[dict]:
-    return db.rows('SELECT * FROM (SELECT * FROM chat_messages ORDER BY id DESC LIMIT 100) ORDER BY id')
+    return db.rows('SELECT * FROM (SELECT * FROM chat_messages ORDER BY id DESC LIMIT 100) AS recent_messages ORDER BY id')
 
 
 def route_message(message: str) -> str:

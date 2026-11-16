@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sqlite3
 from pathlib import Path
 from typing import Any
@@ -20,7 +21,47 @@ class ClosingConnection(sqlite3.Connection):
             self.close()
 
 
-def connect() -> sqlite3.Connection:
+def database_url() -> str:
+    url = os.getenv("DATABASE_URL", "").strip()
+    if os.getenv("VERCEL") and not url:
+        raise RuntimeError("Set DATABASE_URL to your Neon Postgres connection string in Vercel.")
+    if url and not url.startswith(("postgres://", "postgresql://")):
+        raise ValueError("DATABASE_URL must be a Postgres connection string")
+    return url
+
+
+# Application queries use SQLite-style placeholders. Only SQL tokens outside quoted
+# strings are converted; user values always remain bound parameters.
+_SQL_TOKEN = re.compile(r"('(?:''|[^'])*'|\"(?:\"\"|[^\"])*\"|\?|\bCURRENT_TIMESTAMP\b)")
+_UTC_NOW = "to_char(CURRENT_TIMESTAMP AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS')"
+
+
+def postgres_query(query: str) -> str:
+    return _SQL_TOKEN.sub(lambda m: "%s" if m[0] == "?" else _UTC_NOW if m[0] == "CURRENT_TIMESTAMP" else m[0], query)
+
+
+class PostgresConnection:
+    def __init__(self, url: str):
+        import psycopg
+        from psycopg.rows import dict_row
+        # Neon pooled connections use transaction pooling. Avoid session-local
+        # prepared statements and close each connection at the end of the operation.
+        self.raw = psycopg.connect(url, row_factory=dict_row, connect_timeout=15, prepare_threshold=None, client_encoding="utf8")
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        return self.raw.__exit__(exc_type, exc_value, traceback)
+
+    def execute(self, query: str, args: tuple[Any, ...] = ()):
+        return self.raw.execute(postgres_query(query), args or None)
+
+
+def connect() -> sqlite3.Connection | PostgresConnection:
+    url = database_url()
+    if url:
+        return PostgresConnection(url)
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     db = sqlite3.connect(DB_PATH, timeout=10, factory=ClosingConnection)
     db.row_factory = sqlite3.Row
@@ -29,7 +70,27 @@ def connect() -> sqlite3.Connection:
     return db
 
 
+def migration_connection() -> PostgresConnection:
+    url = os.getenv("DATABASE_URL_UNPOOLED", "").strip() or database_url()
+    if not url:
+        raise ValueError("A Postgres connection is required for migration")
+    return PostgresConnection(url)
+
+
+def initialize_postgres(seed: bool = True) -> None:
+    with migration_connection() as conn:
+        # Serialize schema setup across simultaneous serverless cold starts.
+        conn.execute("SELECT pg_advisory_xact_lock(60006000)")
+        conn.raw.execute((ROOT / "database" / "schema.postgres.sql").read_text())
+        if seed:
+            conn.execute("INSERT INTO profiles(id,name,goal,experience,weekly_days,minutes_per_session,equipment,dietary_preferences,weekly_budget) VALUES(1,'Alex Morgan','Build strength and feel more energetic','beginner',4,35,'bodyweight, dumbbells','high protein',70) ON CONFLICT DO NOTHING")
+            conn.raw.execute((ROOT / "database" / "seed.postgres.sql").read_text())
+
+
 def initialize() -> None:
+    if database_url():
+        initialize_postgres()
+        return
     with connect() as db:
         db.executescript(SCHEMA.read_text(encoding="utf-8"))
         # SQLite ALTER TABLE preserves existing user records. Each migration is idempotent.
@@ -63,9 +124,17 @@ def one(query: str, args: tuple[Any, ...] = ()) -> dict[str, Any] | None:
 
 def execute(query: str, args: tuple[Any, ...] = ()) -> int:
     with connect() as db:
-        cur = db.execute(query, args)
-        return cur.lastrowid
+        if query.lstrip().upper().startswith("INSERT"):
+            return insert_id(db, query, args)
+        db.execute(query, args)
+        return 0
 
 
 def json_dump(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False)
+
+
+def insert_id(conn, query: str, args: tuple[Any, ...] = ()) -> int:
+    if isinstance(conn, PostgresConnection):
+        return conn.execute(query.rstrip().rstrip(";") + " RETURNING id", args).fetchone()["id"]
+    return conn.execute(query, args).lastrowid

@@ -139,3 +139,7 @@ FastAPI can serve the built frontend when `frontend/dist` exists at startup; the
 This is a local single-profile application with no login, cloud sync, or multi-user access control. The original proposal's hosted Supabase integration is replaced here by a working local SQLite implementation. General wellness suggestions and heuristic pose cues are not a clinical assessment.
 
 Video remains in the browser. Saving sends derived movement summaries and up to eight numerical 33-landmark snapshots to FastAPI; enabling an LLM sends relevant profile and movement context to that configured service. MediaPipe loads model/WASM assets from the app itself. The Lite model is bundled in frontend/public/models, and npm run dev/build copies WASM files from the installed package. Webcam access requires localhost or HTTPS, browser permission, and compatible hardware. Live TACC inference and camera performance must be verified on the intended device and network.
+
+## Vercel + Neon deployment
+
+See [the deployment guide](docs/DEPLOY-VERCEL.md) for Neon connection settings, existing SQLite data transfer, Vercel setup, and MediaPipe checks.

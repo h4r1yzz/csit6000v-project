@@ -1,0 +1,12 @@
+export type Profile = { id: number; name: string; goal: string; experience: string; weekly_days: number; minutes_per_session: number; equipment: string; dietary_preferences: string; weekly_budget: number; scheduled_days: string[]; food_allergies: string; limitations: string; budget_currency: string }
+export type Exercise = { name: string; sets: number; reps: string; rest_seconds?: number }
+export type Workout = { day: string; focus: string; duration_minutes: number; exercises: Exercise[] }
+export type Meal = { name: string; why: string; cost?: number; calories?: number; protein_g?: number; servings_per_week?: number; ingredients?: string | string[] }
+export type PlanContent = { summary: string; workouts: Workout[]; meals: Meal[]; adaptation_note: string; safety_note: string; estimated_weekly_cost?: number; budget_currency?: string }
+export type Validation = { valid: boolean; checks: { name: string; passed: boolean; detail: string }[] }
+export type Plan = { id?: number; title: string; content: PlanContent; source: string; created_at?: string; workflow_id?: number; steps?: AgentRun[]; validation?: Validation; requires_approval?: boolean }
+export type Log = { id: number; exercise: string; duration_minutes: number; perceived_effort: number; notes: string; completed_at: string }
+export type Agent = { id: string; name: string; description: string }
+export type AgentRun = { id: number; agent_id: string; status: string; source: string; output: Record<string, unknown>; created_at: string; workflow_id?: number; error?: string }
+export type PoseSession = { id: number; exercise: string; duration_seconds: number; reps: number; average_confidence: number; analyzed_frames: number; source: string; created_at: string; range_of_motion: { min: number; max: number }; form_cues: string[] }
+export type Health = { status: string; llm_configured: boolean; model?: string; provider?: string }

@@ -5,8 +5,7 @@
   "functions": {
     "index.py": {
       "maxDuration": 300,
-      "excludeFiles": "{backend/.venv/**,backend/tests/**,frontend/node_modules/**,frontend/src/**,frontend/public/**,frontend/dist/**,public/**,database/*.db*,Samples/**,.git/**}"
+      "excludeFiles": "{backend/.venv/**,backend/tests/**,frontend/node_modules/**,frontend/src/**,frontend/public/**,public/**,database/*.db*,Samples/**,.git/**}"
     }
-  },
-  "rewrites": [{ "source": "/", "destination": "/index.html" }]
+  }
 }

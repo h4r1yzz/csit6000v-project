@@ -21,7 +21,7 @@ Put private values in `backend/.env`. Start with `python3 scripts/dev.py`, or ru
 
 Model base URLs must use HTTP or HTTPS and cannot contain embedded credentials, query strings, or fragments. The client appends `/chat/completions`; supply the provider's API base rather than its completions URL. Neither API keys nor model service URLs are needed in the React bundle.
 
-Each agent makes at most one bounded model request, with no automatic retry. The first transport/service failure during a workflow opens a circuit that skips later network calls in that workflow; later stages still complete locally. A malformed or constraint-invalid model response falls back for that stage and does not prevent later stages from trying the model. Results retain source and fallback details. The explicit connection probe has an eight-second timeout.
+Each specialist makes one bounded model request. If that response fails deterministic constraint checks, the coordinator allows one targeted revision for that specialist before local fallback. Transport failures do not revise: the first service failure opens a workflow circuit that skips later network calls, and later stages complete locally. Malformed JSON or schema-invalid responses fall back for that stage without a revision loop. Workflow results include `clarification` notes when preferences are too broad or catalogs cannot satisfy diet, equipment, or budget constraints. Results retain source and fallback details. The explicit connection probe has an eight-second timeout.
 
 ## Routes
 
@@ -47,7 +47,10 @@ Each agent makes at most one bounded model request, with no automatic retry. The
 | GET | `/api/pose-sessions` | Read saved derived movement summaries. |
 | POST | `/api/pose-sessions` | Save a movement summary; never accepts video. |
 | GET | `/api/assistant/messages` | Read persisted coach conversation messages. |
-| POST | `/api/assistant/chat` | Send a coach query, optionally to a named specialist. |
+| POST | `/api/assistant/chat` | Coach chat. With a configured model, uses the tool-calling orchestrator; pass `agent_id` to force one specialist. |
+| GET | `/api/tools` | List shared FitPilot tool schemas used by the orchestrator and MCP server. |
+| POST | `/api/orchestrator/chat` | Run the tool-calling orchestrator explicitly. |
+| POST | `/api/orchestrator/plan` | Run the specialist plan workflow through the orchestrator API. |
 
 `/api/workflows`, `/api/agent-runs`, and `/api/pose-sessions` accept a `limit` query parameter (maximum 100). `/api/workouts` accepts a limit up to 1,000. `/api/agent-runs` also accepts an `agent_id` filter. History reads return recent records rather than an unbounded full export.
 

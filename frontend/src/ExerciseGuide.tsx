@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Pause, Play, ArrowUpRight } from 'lucide-react'
+import { ArrowUpRight } from 'lucide-react'
 import type { Move } from './pose/analysis'
 
 const guides: Record<Move, { subtitle: string; steps: string[]; cues: string[] }> = {
@@ -10,14 +10,13 @@ const guides: Record<Move, { subtitle: string; steps: string[]; cues: string[] }
 
 export default function ExerciseGuide({ exercise }: { exercise: Move }) {
   const [step, setStep] = useState(0)
-  const [playing, setPlaying] = useState(true)
+  const [playing, setPlaying] = useState(() => !window.matchMedia('(prefers-reduced-motion: reduce)').matches)
   useEffect(() => { setStep(0) }, [exercise])
   useEffect(() => {
     if (!playing) return
     const timer = window.setInterval(() => setStep(value => (value + 1) % 3), 1200)
     return () => window.clearInterval(timer)
   }, [playing, exercise])
-  useEffect(() => { if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) setPlaying(false) }, [])
   const guide = guides[exercise]
   const crouch = exercise === 'Squat' && step === 1
   const shoulderY = crouch ? 155 : 112
@@ -51,8 +50,8 @@ export default function ExerciseGuide({ exercise }: { exercise: Move }) {
         </g>
         <circle cx="324" cy="64" r="24" fill="#fff"/><path d="M315 65l6 6 12-14" stroke="#16805e" strokeWidth="3" fill="none"/>
       </svg>
-      <div className="guide-playbar"><span><i />{guide.steps[step]}</span><button onClick={() => setPlaying(value => !value)} aria-label={playing ? 'Pause exercise guide' : 'Play exercise guide'}>{playing ? <Pause size={15}/> : <Play size={15}/>} {playing ? 'Pause guide' : 'Play guide'}</button></div>
+      <div className="guide-playbar"><span><i />{guide.steps[step]}</span></div>
     </div>
-    <div className="guide-description"><span className="studio-eyebrow">{guide.subtitle}</span><h3>{exercise}<ArrowUpRight size={20}/></h3><div className="guide-steps">{guide.steps.map((label,i) => <button key={label} className={step === i ? 'selected' : ''} onClick={() => {setStep(i);setPlaying(false)}}><span>{i+1}</span>{label}</button>)}</div><p>{guide.cues[step]}</p><small>Guide playback is independent of your repetition count.</small></div>
+    <div className="guide-description"><span className="studio-eyebrow">{guide.subtitle}</span><h3>{exercise}<ArrowUpRight size={20}/></h3><div className="guide-steps">{guide.steps.map((label,i) => <button key={label} className={step === i ? 'selected' : ''} onClick={() => {setStep(i);setPlaying(false)}}><span>{i+1}</span>{label}</button>)}</div><p>{guide.cues[step]}</p></div>
   </aside>
 }

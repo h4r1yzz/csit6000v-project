@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import agents, db, tacc
+from . import agents, db, orchestrator, tacc, tools
 from .schemas import ProfileUpdate, WorkoutLog, PlanSave, PoseSession, AgentRequest, ChatRequest
 
 
@@ -150,7 +150,40 @@ def workflow(workflow_id: int) -> dict:
 
 @app.get('/api/agents')
 def agent_catalog() -> dict:
-    return {'coordinator': {'name': 'Central Coordinator', 'description': 'Routes requests, shares context, invokes specialists and validates drafts before approval.'}, 'agents': agents.AGENTS}
+    return {
+        'coordinator': {
+            'name': 'Central Orchestrator',
+            'description': (
+                'Tool-calling coordinator for chat and planning. Clarifies constraints, can call FitPilot tools '
+                '(profile, catalogs, validation, specialists), runs goal → exercise → nutrition → feedback → '
+                'evaluation for plan drafts, allows one constraint revision per specialist, then validates '
+                'before user approval. The same tools are exposed over MCP.'
+            ),
+        },
+        'agents': agents.AGENTS,
+        'tools': [{'name': spec['name'], 'description': spec['description']} for spec in tools.TOOL_SPECS],
+    }
+
+
+@app.get('/api/tools')
+def list_tools() -> dict:
+    return {'tools': tools.TOOL_SPECS}
+
+
+@app.post('/api/orchestrator/chat')
+def orchestrator_chat(body: ChatRequest) -> dict:
+    result = orchestrator.run_orchestrator(body.message)
+    db.execute('INSERT INTO chat_messages(role,text) VALUES(?,?)', ('user', body.message))
+    db.execute(
+        'INSERT INTO chat_messages(role,text,source) VALUES(?,?,?)',
+        ('assistant', result['answer'], result['source']),
+    )
+    return result
+
+
+@app.post('/api/orchestrator/plan')
+def orchestrator_plan() -> dict:
+    return orchestrator.orchestrate_plan()
 
 
 @app.get('/api/agent-runs')
@@ -212,10 +245,26 @@ def route_message(message: str) -> str:
 
 @app.post('/api/assistant/chat')
 def assistant_chat(body: ChatRequest) -> dict:
-    agent_id = body.agent_id or route_message(body.message)
-    if agent_id not in agents.MODELS:
-        raise HTTPException(404, 'Unknown agent')
     db.execute('INSERT INTO chat_messages(role,text) VALUES(?,?)', ('user', body.message))
+    # Explicit specialist override keeps the Coaching Team / debug path.
+    if body.agent_id:
+        if body.agent_id not in agents.MODELS:
+            raise HTTPException(404, 'Unknown agent')
+        run = agents.run_agent(body.agent_id, agents.context(), body.message)
+        output = run['output']
+        pieces = [output['summary']]
+        for key in ['priorities', 'suggestions', 'recommendations', 'notes']:
+            if output.get(key):
+                pieces.extend(output[key][:3])
+        answer = '\n\n'.join(pieces)
+        db.execute('INSERT INTO chat_messages(role,text,source,agent_run_id) VALUES(?,?,?,?)', ('assistant', answer, run['source'], run['id']))
+        return {'answer': answer, 'source': run['source'], 'agent_id': body.agent_id, 'run_id': run['id'], 'tool_trace': []}
+    # Default coach chat uses the tool-calling orchestrator when a model is configured.
+    if tacc.configuration()['configured']:
+        result = orchestrator.run_orchestrator(body.message)
+        db.execute('INSERT INTO chat_messages(role,text,source) VALUES(?,?,?)', ('assistant', result['answer'], result['source']))
+        return result
+    agent_id = route_message(body.message)
     run = agents.run_agent(agent_id, agents.context(), body.message)
     output = run['output']
     pieces = [output['summary']]
@@ -224,7 +273,7 @@ def assistant_chat(body: ChatRequest) -> dict:
             pieces.extend(output[key][:3])
     answer = '\n\n'.join(pieces)
     db.execute('INSERT INTO chat_messages(role,text,source,agent_run_id) VALUES(?,?,?,?)', ('assistant', answer, run['source'], run['id']))
-    return {'answer': answer, 'source': run['source'], 'agent_id': agent_id, 'run_id': run['id']}
+    return {'answer': answer, 'source': run['source'], 'agent_id': agent_id, 'run_id': run['id'], 'tool_trace': []}
 
 
 # When built, the same server can host the SPA. Register API/docs routes first.

@@ -27,7 +27,9 @@ flowchart TD
     Coordinator -. optional requests .-> LLM[OpenAI-compatible LLM / TACC Qwen]
 ```
 
-The coordinator owns workflow order and shared context. Each specialized agent has its own request, structured result, provenance, and persisted execution record. The evaluation stage checks the combined result against stored preferences before the user can activate a plan. Browser pose estimation is a separate computer vision pipeline; it does not ask a language model to inspect video.
+The coordinator owns workflow order and shared context: clarify impossible or vague preferences, run goal → exercise → nutrition → feedback, validate the assembled draft, then run evaluation/adaptation. Each specialized agent has its own request, structured result, provenance, and persisted execution record. If a specialist response fails deterministic checks, the coordinator allows one targeted revision for that stage before local fallback. The evaluation stage checks the combined result against stored preferences before the user can activate a plan.
+
+Coach chat uses a tool-calling orchestrator (`app/orchestrator.py`) when a model is configured. Shared tools live in `app/tools.py` and are also exposed by `backend/mcp_server.py` over MCP stdio for Cursor or other MCP hosts. Browser pose estimation is a separate computer vision pipeline; it does not ask a language model to inspect video.
 
 ## Agent responsibilities
 
@@ -73,7 +75,7 @@ The model client supports a generic OpenAI-compatible `/chat/completions` API an
 
 A configured URL is not proof of a reachable model. Health information, agent provenance, and workflow results distinguish configuration from actual inference. Missing connectivity, malformed JSON, or constraint violations are surfaced in run details and can lead to local fallback. Local results must not be presented as model-generated answers.
 
-Execution is bounded to the configured specialist stages and at most one model request per stage. A per-workflow circuit skips later model calls after a transport failure; invalid structured output causes a local fallback for that stage. There are no open-ended agent loops or automatic model retries.
+Execution is bounded to the configured specialist stages. Each stage makes one model request, plus at most one constraint-revision request when deterministic checks fail. A per-workflow circuit skips later model calls after a transport failure; malformed JSON or schema-invalid output causes a local fallback for that stage without revision. There are no open-ended agent loops.
 
 The agents are application modules with explicit context passing and persisted execution state. They are not independent background workers or autonomous services. Running a plan workflow performs the stages for that request; it does not create a scheduled task.
 

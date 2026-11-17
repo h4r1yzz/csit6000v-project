@@ -5,6 +5,7 @@ import json
 import math
 from http.client import HTTPException
 import os
+from typing import Any, Optional
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
@@ -30,20 +31,42 @@ def configuration() -> dict:
     return {'configured': bool(base and model and valid), 'model': model, 'provider': 'openai_compatible' if generic else 'tacc_qwen', 'base_url': base, 'valid_url': bool(valid), 'source': 'llm' if generic else 'tacc_qwen'}
 
 
-def ask(messages: list[dict[str, str]], *, temperature: float = 0.2, max_tokens: int = 1600, timeout_override: float = None, structured_schema: dict = None) -> str:
+def _timeout(timeout_override: Optional[float] = None) -> float:
+    try:
+        timeout = float(timeout_override if timeout_override is not None else os.getenv('LLM_TIMEOUT_SECONDS', os.getenv('QWEN_TIMEOUT_SECONDS', '45')))
+        return min(120.0, max(1.0, timeout)) if math.isfinite(timeout) else 45.0
+    except (ValueError, TypeError):
+        return 45.0
+
+
+def chat(
+    messages: list[dict[str, Any]],
+    *,
+    temperature: float = 0.2,
+    max_tokens: int = 1600,
+    timeout_override: float = None,
+    structured_schema: dict = None,
+    tools: Optional[list[dict[str, Any]]] = None,
+    tool_choice: str | dict = 'auto',
+) -> dict[str, Any]:
+    """Call chat/completions and return the assistant message object (may include tool_calls)."""
     cfg = configuration()
     if not cfg['configured']:
         raise ModelUnavailable('A valid LLM_BASE_URL or QWEN_BASE_URL and model must be configured')
-    try:
-        timeout = float(timeout_override if timeout_override is not None else os.getenv('LLM_TIMEOUT_SECONDS', os.getenv('QWEN_TIMEOUT_SECONDS', '45')))
-        timeout = min(120.0, max(1.0, timeout)) if math.isfinite(timeout) else 45.0
-    except (ValueError, TypeError):
-        timeout = 45.0
-    payload = {'model': cfg['model'], 'messages': messages, 'temperature': temperature, 'max_tokens': max_tokens}
+    timeout = _timeout(timeout_override)
+    payload: dict[str, Any] = {
+        'model': cfg['model'],
+        'messages': messages,
+        'temperature': temperature,
+        'max_tokens': max_tokens,
+    }
+    if tools:
+        payload['tools'] = tools
+        payload['tool_choice'] = tool_choice
     # Qwen's extension is not sent to generic providers that may reject unknown fields.
     if cfg['provider'] == 'tacc_qwen':
         payload['chat_template_kwargs'] = {'enable_thinking': False}
-        if structured_schema is not None:
+        if structured_schema is not None and not tools:
             payload['structured_outputs'] = {'json': structured_schema}
     headers = {'Content-Type': 'application/json'}
     key = os.getenv('LLM_API_KEY', '').strip()
@@ -53,9 +76,29 @@ def ask(messages: list[dict[str, str]], *, temperature: float = 0.2, max_tokens:
     try:
         with urlopen(req, timeout=timeout) as response:
             data = json.load(response)
-        answer = data['choices'][0]['message']['content']
-        if not isinstance(answer, str) or not answer.strip():
+        message = data['choices'][0]['message']
+        if not isinstance(message, dict):
+            raise ModelUnavailable('The model returned an invalid message')
+        content = message.get('content')
+        tool_calls = message.get('tool_calls') or []
+        if tool_calls:
+            return {'role': 'assistant', 'content': content, 'tool_calls': tool_calls, 'source': cfg['source']}
+        if not isinstance(content, str) or not content.strip():
             raise ModelUnavailable('The model returned an empty answer')
-        return answer.strip()
+        return {'role': 'assistant', 'content': content.strip(), 'source': cfg['source']}
     except (HTTPError, HTTPException, URLError, TimeoutError, OSError, ValueError, KeyError, IndexError, TypeError) as exc:
         raise ModelUnavailable('The configured model could not complete the request; local rules were used') from exc
+
+
+def ask(messages: list[dict[str, str]], *, temperature: float = 0.2, max_tokens: int = 1600, timeout_override: float = None, structured_schema: dict = None) -> str:
+    message = chat(
+        messages,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        timeout_override=timeout_override,
+        structured_schema=structured_schema,
+    )
+    content = message.get('content')
+    if not isinstance(content, str) or not content.strip():
+        raise ModelUnavailable('The model returned an empty answer')
+    return content.strip()

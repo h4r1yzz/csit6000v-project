@@ -328,6 +328,81 @@ class FitPilotTests(unittest.TestCase):
         draft['content']['estimated_weekly_cost'] = sum(m['cost'] * m['servings_per_week'] for m in draft['content']['meals'])
         self.assertEqual(self.client.post('/api/plans', json=draft).status_code, 422)
 
+    def test_coordinator_surfaces_clarification_for_unsupported_diet(self):
+        self.update_profile(dietary_preferences='halal')
+        draft = self.generate()
+        self.assertTrue(draft['clarification'])
+        self.assertTrue(any('catalog meals' in note.lower() for note in draft['clarification']))
+        self.assertFalse(draft['validation']['valid'])
+        self.assertEqual(len(draft['steps']), 5)
+
+    def test_constraint_revision_retries_once_then_keeps_five_stages(self):
+        ctx = agents.context()
+        days = agents.selected_days(ctx['profile'])
+        bad_exercise = {
+            'summary': 'Invalid catalog names',
+            'workouts': [
+                {'focus': 'Strength', 'duration_minutes': ctx['profile']['minutes_per_session'],
+                 'exercises': [{'name': 'MissingMove', 'sets': 1, 'reps': '8', 'rest_seconds': 30}]}
+                for _ in days
+            ],
+        }
+        answers = [
+            json.dumps(agents.fallback('goal_planning', ctx)),
+            json.dumps(bad_exercise),
+            json.dumps(agents.fallback('exercise_planning', ctx)),
+            json.dumps({'menu_id': 'menu_1', 'summary': 'A revised catalog menu.'}),
+            json.dumps(agents.fallback('exercise_feedback', ctx)),
+            json.dumps(agents.fallback('evaluation_adaptation', ctx)),
+        ]
+        with patch.dict(os.environ, {'LLM_BASE_URL': 'http://localhost:12345/v1'}):
+            with patch('app.tacc.ask', side_effect=answers) as ask:
+                draft = self.generate()
+        self.assertEqual(ask.call_count, 6)
+        self.assertEqual([step['agent_id'] for step in draft['steps']], [agent['id'] for agent in agents.AGENTS])
+        self.assertEqual(len(draft['steps']), 5)
+        self.assertTrue(draft['validation']['valid'])
+        self.assertEqual(draft['steps'][1]['source'], 'llm')
+
+    def test_tools_registry_and_search(self):
+        from app import tools
+        catalog = self.client.get('/api/tools').json()['tools']
+        self.assertTrue(any(tool['name'] == 'search_exercises' for tool in catalog))
+        profile = tools.execute('get_profile')
+        self.assertEqual(profile['name'], self.client.get('/api/profile').json()['name'])
+        exercises = tools.execute('search_exercises', {'query': 'squat', 'available_only': True})
+        self.assertTrue(any('squat' in row['name'].lower() for row in exercises))
+
+    def test_orchestrator_tool_loop_then_answers(self):
+        from app import orchestrator
+        calls = [
+            {
+                'role': 'assistant',
+                'content': None,
+                'tool_calls': [{
+                    'id': 'call_1',
+                    'type': 'function',
+                    'function': {'name': 'get_profile', 'arguments': '{}'},
+                }],
+                'source': 'llm',
+            },
+            {
+                'role': 'assistant',
+                'content': 'Your saved goal is strength-focused. Keep sessions consistent this week.',
+                'source': 'llm',
+            },
+        ]
+        with patch.dict(os.environ, {'LLM_BASE_URL': 'http://localhost:12345/v1'}):
+            with patch('app.tacc.chat', side_effect=calls) as chat:
+                result = self.client.post('/api/assistant/chat', json={'message': 'What is my goal?'}).json()
+        self.assertEqual(chat.call_count, 2)
+        self.assertEqual(result['agent_id'], 'orchestrator')
+        self.assertEqual(result['source'], 'llm')
+        self.assertIn('strength', result['answer'].lower())
+        self.assertEqual(result['tool_trace'][0]['tool'], 'get_profile')
+        self.assertTrue(result['tool_trace'][0]['ok'])
+        self.assertEqual(orchestrator.MAX_TOOL_ROUNDS, 5)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -81,6 +81,29 @@ npm run dev -- --host 127.0.0.1 --port 5173 --strictPort
 
 The development UI proxies API requests to FastAPI.
 
+## MCP server (tool access for Cursor / hosts)
+
+FitPilot exposes the same orchestrator tools over MCP stdio:
+
+```bash
+backend/.venv/bin/python backend/mcp_server.py
+```
+
+Example Cursor MCP config:
+
+```json
+{
+  "mcpServers": {
+    "fitpilot": {
+      "command": "/absolute/path/to/csit6000v-project/backend/.venv/bin/python",
+      "args": ["/absolute/path/to/csit6000v-project/backend/mcp_server.py"]
+    }
+  }
+}
+```
+
+Coach chat uses the tool-calling orchestrator automatically when `LLM_BASE_URL` / TACC is configured.
+
 ## Connect an LLM
 
 Copy `backend/.env.example` to `backend/.env` and edit it locally. `scripts/dev.py` automatically passes this file to Uvicorn. For separate backend startup, add `--env-file .env`. A bare `uvicorn` command does not automatically load `.env`.

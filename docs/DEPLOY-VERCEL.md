@@ -59,3 +59,7 @@ node --test frontend/src/pose/analysis.test.mjs
 Postgres integration tests create and drop isolated `test_*` schemas. SQLite legacy migration has its own test; it is skipped in the Postgres subclass.
 
 References: [Vercel FastAPI](https://vercel.com/docs/frameworks/backend/fastapi), [Neon Python](https://neon.com/docs/guides/python), [Neon connection pooling](https://neon.com/docs/connect/connection-pooling).
+
+## Database startup
+
+Vercel cold starts do not run schema creation or seeds. Provision Neon with the migration command above before the first deployment, and apply future schema changes explicitly before deploying code that needs them. Local development still initializes its database automatically.

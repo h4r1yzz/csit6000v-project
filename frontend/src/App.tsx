@@ -44,10 +44,22 @@ export default function App({ initialView = 'overview' }: { initialView?: 'overv
 
   const refresh = useCallback(async () => {
     try {
-      const [data, activity, health, poses, plans, workflows, messages] = await Promise.all([api.get<Overview>('/api/overview'), api.get<Log[]>('/api/workouts'), api.get<Health>('/api/health'), api.get<PoseSession[]>('/api/pose-sessions'), api.get<Plan[]>('/api/plans'), api.get<{ id: number; result: Plan | null }[]>('/api/workflows?limit=10'), api.get<{ role: string; text: string; source: string }[]>('/api/assistant/messages')])
-      setOverview(data); setProfile(data.profile); setDraft(current => current || data.profile); setLogs(activity); setPoseSessions(poses); setPlanHistory(plans); setApiReady(true); setLlmReady(health.llm_configured); setError(''); setRevision(value => value + 1)
-      setRecentDrafts(workflows.flatMap(workflow => workflow.result && !plans.some(plan => plan.workflow_id === workflow.id) ? [workflow.result] : []))
-      setChatHistory(messages.map(item => ({ role: item.role === 'user' ? 'you' : 'coach', text: item.text, source: item.source || undefined })))
+      const data = await api.get<Overview>('/api/overview')
+      setOverview(data); setProfile(data.profile); setDraft(current => current || data.profile)
+      setLogs(data.recent_workouts); setApiReady(true); setError('')
+      // Secondary history must not hold the entire dashboard behind a spinner.
+      const results = await Promise.allSettled([
+        api.get<Log[]>('/api/workouts').then(setLogs),
+        api.get<Health>('/api/health').then(health => setLlmReady(health.llm_configured)),
+        api.get<PoseSession[]>('/api/pose-sessions').then(setPoseSessions),
+        Promise.all([api.get<Plan[]>('/api/plans'), api.get<{ id: number; result: Plan | null }[]>('/api/workflows?limit=10')]).then(([plans, workflows]) => {
+          setPlanHistory(plans)
+          setRecentDrafts(workflows.flatMap(workflow => workflow.result && !plans.some(plan => plan.workflow_id === workflow.id) ? [workflow.result] : []))
+        }),
+        api.get<{ role: string; text: string; source: string }[]>('/api/assistant/messages').then(messages => setChatHistory(messages.map(item => ({ role: item.role === 'user' ? 'you' : 'coach', text: item.text, source: item.source || undefined })))),
+      ])
+      if (results.some(result => result.status === 'rejected')) setError('Some history could not be loaded. Retry to refresh it.')
+      setRevision(value => value + 1)
     } catch (e) { setApiReady(false); setError(e instanceof Error ? e.message : 'Could not connect to FitPilot API. Start the backend to continue.') }
   }, [])
 

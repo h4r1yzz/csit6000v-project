@@ -17,7 +17,9 @@ from .schemas import ProfileUpdate, WorkoutLog, PlanSave, PoseSession, AgentRequ
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    db.initialize()
+    # Production schema is provisioned by the migration command, not cold starts.
+    if not os.getenv("VERCEL"):
+        db.initialize()
     yield
 
 
@@ -74,11 +76,20 @@ def update_profile(body: ProfileUpdate) -> dict:
 
 @app.get('/api/overview')
 def overview() -> dict:
-    stats = db.one('SELECT COUNT(*) AS workouts,COALESCE(SUM(duration_minutes),0) AS minutes,COALESCE(AVG(perceived_effort),0) AS avg_effort FROM workout_logs WHERE completed_at>=?', (agents.week_start_utc(),))
-    totals = db.one('SELECT COUNT(*) AS total_workouts,COALESCE(SUM(duration_minutes),0) AS total_minutes FROM workout_logs')
-    stats.update(totals)
-    stats['pose_sessions'] = db.one('SELECT COUNT(*) AS count FROM pose_sessions')['count']
-    return {'profile': agents.profile(), 'stats': stats, 'recent_workouts': db.rows('SELECT * FROM workout_logs ORDER BY completed_at DESC,id DESC LIMIT 5'), 'active_plan': plan_row(db.one('SELECT * FROM plans WHERE is_active=1 ORDER BY id DESC LIMIT 1'))}
+    # Share one connection across the overview instead of reconnecting per query.
+    with db.connect() as conn:
+        stats = dict(conn.execute("""SELECT
+            COUNT(CASE WHEN completed_at>=? THEN 1 END) AS workouts,
+            COALESCE(SUM(CASE WHEN completed_at>=? THEN duration_minutes ELSE 0 END),0) AS minutes,
+            COALESCE(AVG(CASE WHEN completed_at>=? THEN perceived_effort END),0) AS avg_effort,
+            COUNT(*) AS total_workouts, COALESCE(SUM(duration_minutes),0) AS total_minutes,
+            (SELECT COUNT(*) FROM pose_sessions) AS pose_sessions
+            FROM workout_logs""", (agents.week_start_utc(),) * 3).fetchone())
+        user = dict(conn.execute('SELECT * FROM profiles WHERE id=1').fetchone())
+        user['scheduled_days'] = json.loads(user.get('scheduled_days') or '[]')
+        recent = [dict(row) for row in conn.execute('SELECT * FROM workout_logs ORDER BY completed_at DESC,id DESC LIMIT 5').fetchall()]
+        plan = conn.execute('SELECT * FROM plans WHERE is_active=1 ORDER BY id DESC LIMIT 1').fetchone()
+    return {'profile': user, 'stats': stats, 'recent_workouts': recent, 'active_plan': plan_row(dict(plan) if plan else None)}
 
 
 @app.get('/api/catalogs')

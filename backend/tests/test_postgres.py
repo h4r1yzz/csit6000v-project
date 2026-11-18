@@ -28,6 +28,7 @@ class PostgresTests(test_api.FitPilotTests):
             super().tearDown()
         finally:
             self.config.stop()
+            self.admin.execute(sql.SQL('DROP SCHEMA {} CASCADE').format(sql.Identifier(f'fitpilot_account_{self.account_id}')))
             self.admin.execute(sql.SQL('DROP SCHEMA {} CASCADE').format(sql.Identifier(self.schema)))
             self.admin.close()
 

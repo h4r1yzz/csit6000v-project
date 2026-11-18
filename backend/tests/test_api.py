@@ -23,8 +23,15 @@ class FitPilotTests(unittest.TestCase):
         self.env.start()
         self.client_context = TestClient(app)
         self.client = self.client_context.__enter__()
+        self.client.post('/api/auth/register', json={
+            'name': 'Alex Morgan', 'email': 'alex@example.test', 'password': 'example-password-123',
+        }).raise_for_status()
+        self.account_id = int(self.client.get('/api/auth/me').json()['id'])
+        self.account_context = db.account_scope(self.account_id)
+        self.account_context.__enter__()
 
     def tearDown(self):
+        self.account_context.__exit__(None, None, None)
         self.client_context.__exit__(None, None, None)
         self.env.stop()
         db.DB_PATH = self.previous_path
@@ -273,39 +280,37 @@ class FitPilotTests(unittest.TestCase):
             conn.execute("INSERT INTO plans(title,content_json,source,is_active) VALUES('Legacy Qwen plan',?,'tacc_qwen',1)", (old_content,))
             conn.execute("INSERT INTO plans(title,content_json,source,is_active) VALUES('Legacy local plan',?,'local_fallback',0)", (old_content,))
             conn.execute("INSERT INTO recipes(name,calories,protein_g,cost,dietary_tags,ingredients) VALUES('My custom recipe',400,25,3,'vegetarian','Custom ingredients')")
-        current_path = db.DB_PATH
-        db.DB_PATH = path
-        try:
-            db.initialize()
-            db.initialize()
-            profile = self.client.get('/api/profile').json()
-            self.assertEqual(profile['name'], 'Legacy owner')
-            self.assertEqual(profile['goal'], 'Keep my saved goal')
-            self.assertEqual(profile['weekly_budget'], 81)
-            self.assertEqual(profile['scheduled_days'], [])
-            self.assertEqual(profile['food_allergies'], '')
-            self.assertEqual(profile['limitations'], '')
-            self.assertEqual(profile['budget_currency'], 'USD')
-            logs = self.client.get('/api/workouts').json()
-            self.assertEqual(len(logs), 1)
-            self.assertEqual(logs[0]['notes'], 'Keep this journal entry')
-            plans = db.rows('SELECT * FROM plans ORDER BY id')
-            self.assertEqual(len(plans), 2)
-            self.assertEqual([p['content_json'] for p in plans], [old_content, old_content])
-            self.assertEqual([p['source'] for p in plans], ['tacc_qwen', 'local_fallback'])
-            self.assertEqual([p['is_active'] for p in plans], [1, 0])
-            self.assertTrue(all(p['workflow_id'] is None and p['execution_source'] is None for p in plans))
-            active = self.client.get('/api/overview').json()['active_plan']
-            self.assertEqual(active['title'], 'Legacy Qwen plan')
-            self.assertEqual(active['content'], json.loads(old_content))
-            self.assertIsNotNone(db.one("SELECT id FROM recipes WHERE name='My custom recipe'"))
-            draft = self.generate()
-            self.assertEqual(len(draft['steps']), 5)
-            summary = {'exercise':'Squat','duration_seconds':10,'reps':2,'analyzed_frames':50,'average_confidence':0.8,'range_of_motion':{'min':80,'max':170},'form_cues':[], 'source':'upload'}
-            self.assertEqual(self.client.post('/api/pose-sessions', json=summary).status_code, 200)
-            self.assertEqual(self.client.get('/api/overview').json()['active_plan']['title'], 'Legacy Qwen plan')
-        finally:
-            db.DB_PATH = current_path
+        with sqlite3.connect(path) as legacy, db.connect() as account_db:
+            legacy.backup(account_db)
+        db.initialize()
+        db.initialize()
+        profile = self.client.get('/api/profile').json()
+        self.assertEqual(profile['name'], 'Legacy owner')
+        self.assertEqual(profile['goal'], 'Keep my saved goal')
+        self.assertEqual(profile['weekly_budget'], 81)
+        self.assertEqual(profile['scheduled_days'], [])
+        self.assertEqual(profile['food_allergies'], '')
+        self.assertEqual(profile['limitations'], '')
+        self.assertEqual(profile['budget_currency'], 'USD')
+        logs = self.client.get('/api/workouts').json()
+        self.assertEqual(len(logs), 1)
+        self.assertEqual(logs[0]['notes'], 'Keep this journal entry')
+        plans = db.rows('SELECT * FROM plans ORDER BY id')
+        self.assertEqual(len(plans), 2)
+        self.assertEqual([p['content_json'] for p in plans], [old_content, old_content])
+        self.assertEqual([p['source'] for p in plans], ['tacc_qwen', 'local_fallback'])
+        self.assertEqual([p['is_active'] for p in plans], [1, 0])
+        self.assertTrue(all(p['workflow_id'] is None and p['execution_source'] is None for p in plans))
+        active = self.client.get('/api/overview').json()['active_plan']
+        self.assertEqual(active['title'], 'Legacy Qwen plan')
+        self.assertEqual(active['content'], json.loads(old_content))
+        self.assertIsNotNone(db.one("SELECT id FROM recipes WHERE name='My custom recipe'"))
+        draft = self.generate()
+        self.assertEqual(len(draft['steps']), 5)
+        summary = {'exercise':'Squat','duration_seconds':10,'reps':2,'analyzed_frames':50,'average_confidence':0.8,'range_of_motion':{'min':80,'max':170},'form_cues':[], 'source':'upload'}
+        self.assertEqual(self.client.post('/api/pose-sessions', json=summary).status_code, 200)
+        self.assertEqual(self.client.get('/api/overview').json()['active_plan']['title'], 'Legacy Qwen plan')
+
 
     @unittest.skipUnless((db.ROOT / 'frontend' / 'dist' / 'index.html').is_file(), 'Build frontend first to check SPA hosting')
     def test_built_frontend_and_api_routes_are_served_together(self):

@@ -36,6 +36,9 @@ class BilateralSchemaTests(unittest.TestCase):
         from app import db
         from app.main import app
         with tempfile.TemporaryDirectory() as folder, patch.object(db, 'DB_PATH', Path(folder) / 'test.db'), patch.dict('os.environ', {'LLM_BASE_URL': '', 'QWEN_BASE_URL': ''}), TestClient(app) as client:
+            client.post('/api/auth/register', json={
+                'name': 'Demo', 'email': 'person@example.test', 'password': 'example-password-123',
+            }).raise_for_status()
             saved = client.post('/api/pose-sessions', json=self.payload())
             self.assertEqual(saved.status_code, 200, saved.text)
             restored = client.get('/api/pose-sessions').json()[0]

@@ -6,12 +6,14 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi.exception_handlers import request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import agents, db, orchestrator, tacc, tools
+from . import agents, auth, db, orchestrator, tacc, tools
 from .schemas import ProfileUpdate, WorkoutLog, PlanSave, PoseSession, AgentRequest, ChatRequest
 
 
@@ -20,11 +22,28 @@ async def lifespan(app: FastAPI):
     # Production schema is provisioned by the migration command, not cold starts.
     if not os.getenv("VERCEL"):
         db.initialize()
+        auth.initialize_registry()
     yield
 
 
 app = FastAPI(title='FitPilot API', version='1.0.0', description='Coordinator, specialist agents, plans, pose summaries and progress persistence.', lifespan=lifespan)
-app.add_middleware(CORSMiddleware, allow_origins=[x.strip() for x in os.getenv('CORS_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173').split(',') if x.strip()], allow_methods=['GET', 'POST', 'PUT'], allow_headers=['Content-Type'])
+app.state.trusted_origins = [origin.strip() for origin in os.getenv(
+    'CORS_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173'
+).split(',') if origin.strip() and origin.strip() != '*']
+app.middleware("http")(auth.session_middleware)
+app.add_middleware(CORSMiddleware, allow_origins=app.state.trusted_origins, allow_credentials=True,
+                   allow_methods=['GET', 'POST', 'PUT'], allow_headers=['Content-Type'])
+app.include_router(auth.router)
+
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error(request: Request, exc: RequestValidationError):
+    if request.url.path.startswith('/api/auth/'):
+        # Never reflect submitted credentials in a validation response.
+        fields = [{'loc': error['loc'], 'msg': error['msg']} for error in exc.errors()]
+        return JSONResponse({'detail': fields}, status_code=422)
+    return await request_validation_exception_handler(request, exc)
 
 
 def plan_row(row: Optional[dict]) -> Optional[dict]:

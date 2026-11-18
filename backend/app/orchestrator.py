@@ -16,6 +16,7 @@ MAX_TOOL_ROUNDS = 5
 ORCHESTRATOR_SYSTEM = (
     "You are FitPilot's Central Orchestrator. "
     'Use tools to inspect the profile, catalogs, progress, clarifications, and specialist outputs. '
+    'Treat recent questions as background. Prioritize the current request and saved profile constraints. '
     'Prefer tools over guessing. Provide general wellness guidance only; never diagnose injuries. '
     'Do not claim to have seen video. Do not tell the user a plan was saved unless they approved it in the UI. '
     'When enough evidence is gathered, answer clearly in plain language for the user.'
@@ -45,6 +46,8 @@ def run_orchestrator(message: str, *, ctx: Optional[dict] = None, max_rounds: in
             'role': 'user',
             'content': json.dumps({
                 'question': message,
+                'profile': context['profile'],
+                'recent_questions': context.get('recent_questions', []),
                 'hint': 'Call tools as needed, then answer the user. Keep the final answer concise.',
             }),
         },
@@ -55,7 +58,7 @@ def run_orchestrator(message: str, *, ctx: Optional[dict] = None, max_rounds: in
         openai_tool_defs = tools.openai_tools()
         source = tacc.configuration()['source']
         for _ in range(max(1, max_rounds)):
-            reply = tacc.chat(messages, tools=openai_tool_defs, max_tokens=1800)
+            reply = tacc.chat(messages, tools=openai_tool_defs, max_tokens=1800, agent_id='orchestrator')
             source = reply.get('source') or source
             tool_calls = reply.get('tool_calls') or []
             if not tool_calls:
@@ -88,6 +91,7 @@ def run_orchestrator(message: str, *, ctx: Optional[dict] = None, max_rounds: in
         answer = tacc.ask(
             messages + [{'role': 'user', 'content': 'Tool budget reached. Answer the user now without more tool calls.'}],
             max_tokens=1200,
+            agent_id='orchestrator',
         )
         return {
             'answer': answer,

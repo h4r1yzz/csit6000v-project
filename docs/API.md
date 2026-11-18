@@ -27,6 +27,10 @@ Each specialist makes one bounded model request. If that response fails determin
 
 | Method | Route | Purpose |
 | --- | --- | --- |
+| POST | `/api/auth/register` | Create an account with name, email and password (8–128 characters), then start a session. |
+| POST | `/api/auth/login` | Start a session using email and password. |
+| GET | `/api/auth/me` | Get the signed-in account identity. |
+| POST | `/api/auth/logout` | Revoke the current session. |
 | GET | `/api/health` | API status and model configuration information. |
 | GET | `/api/model/status` | Explicitly check the configured model service. |
 | GET | `/api/profile` | Read the local profile. |
@@ -54,12 +58,12 @@ Each specialist makes one bounded model request. If that response fails determin
 
 `/api/workflows`, `/api/agent-runs`, and `/api/pose-sessions` accept a `limit` query parameter (maximum 100). `/api/workouts` accepts a limit up to 1,000. `/api/agent-runs` also accepts an `agent_id` filter. History reads return recent records rather than an unbounded full export.
 
-The application is single-profile and these routes have no authentication. Keep the local server bound to loopback unless you intentionally configure a trusted deployment.
+Personal data routes require a valid HTTP-only session cookie. Requests without one receive HTTP 401. Browser clients send it automatically on same-origin API calls. For the curl examples below, first sign in with a cookie jar and pass `-b cookies.txt` on subsequent requests. Keep the cookie jar private.
 
 ## Profile
 
 ```bash
-curl http://127.0.0.1:8000/api/profile
+curl -b cookies.txt http://127.0.0.1:8000/api/profile
 ```
 
 Update with a complete preference object:

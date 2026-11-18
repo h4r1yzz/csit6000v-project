@@ -81,7 +81,7 @@ The agents are application modules with explicit context passing and persisted e
 
 ## Privacy and scope
 
-- This checkout is a local, single-profile application. It has no account system or multi-user isolation.
+- HTTP sessions select a private account workspace before the coordinator loads profile, preferences, progress and recent questions. The local MCP stdio process runs separately against the original standalone workspace.
 - Video frames and uploaded clips stay in browser memory; the API receives derived session summaries when the user saves them.
 - Saved profile details, catalog entries, plans, logs, agent inputs/outputs, and pose summaries are local database records. A pose summary can include up to eight numerical snapshots of 33 `{x,y,z,visibility}` landmarks.
 - When a live LLM is enabled, the backend sends relevant profile and activity context to that configured service. Do not enter sensitive information that should not leave the device.

@@ -16,6 +16,7 @@ Connections enable foreign keys, use write-ahead logging (WAL), and wait up to t
 | `workflows` | Coordinator execution status, shared context JSON, result JSON, and timestamps. |
 | `agent_runs` | Specialist ID, input/output JSON, status, source, fallback/error details, timestamps, and optional workflow foreign key. |
 | `pose_sessions` | Exercise name and derived pose summary JSON, including at most eight numerical 33-landmark snapshots. Contains no video or image bytes. |
+| `model_prompts` | Prepared model request body (including messages, options and tool definitions), agent, optional agent-run ID, provider, model, time and request status. |
 | `chat_messages` | User/assistant text with source, timestamp, and optional agent-run link. |
 
 ```mermaid
@@ -28,7 +29,9 @@ erDiagram
     WORKOUT_LOGS ||--o{ WORKFLOWS : supplies_progress
 ```
 
-Only the explicit workflow and agent-run links are database foreign keys. Profile, pose, and progress context relationships in the diagram describe application context passed into executions. The single-profile schema has no per-user ownership columns.
+Only the explicit workflow and agent-run links are database foreign keys. Profile, pose, and progress context relationships in the diagram describe application context passed into executions. Each signed-in account owns a separate workspace containing these tables. The session middleware selects it for all personal API routes.
+
+The registry holds `accounts` and `account_sessions`. The server looks up a session by its token hash. With SQLite, records for a signed-in user live beside the registry in `fitpilot.db.account-<id>.db`. With Postgres they live in `fitpilot_account_<id>`. Legacy demo data stays in the original file or schema. New accounts start with the submitted name and an empty history.
 
 ## Initialization and migrations
 
@@ -42,7 +45,7 @@ Schema constraints validate the basic shape of stored values. Pydantic and deter
 
 ## Backup
 
-Use SQLite's online backup mechanism for a consistent snapshot while WAL is enabled. From the project root:
+Back up the registry and each neighboring account database. For a consistent snapshot of the whole set, stop the app before doing so. The example below backs up one database using the SQLite backup API. From the project root:
 
 ```bash
 backend/.venv/bin/python - <<'PY'
@@ -79,8 +82,6 @@ with sqlite3.connect(f'{path.as_uri()}?mode=ro', uri=True) as connection:
 PY
 ```
 
-## Limits and hosting
+## Recommendation history
 
-SQLite provides local persistence, not account isolation or cloud synchronization. API requests operate on the same local profile. Workflows store context snapshots, so historical agent inputs can include personal preferences and activity summaries. Backups should be protected accordingly.
-
-The original proposal named Supabase. This implementation uses SQLite so it can run with no external credentials. Introducing Supabase/PostgreSQL requires a storage adapter or migration, authenticated user IDs on all owned records, ownership checks on every route, and a deliberate data migration. Changing a connection string alone does not enable that behavior.
+Chat text and specialist results are stored separately from model prompts. A prompt row records the prepared input and whether a model answered, failed, or was unconfigured. Read `model_prompts` in the account database to inspect it. The recommender uses the saved profile, activity, and up to six recent user questions. Prompt history can contain fitness preferences and measurements. Transport headers and model-service credentials are excluded.

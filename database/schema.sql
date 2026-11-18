@@ -88,3 +88,15 @@ CREATE TABLE IF NOT EXISTS chat_messages (
 );
 CREATE INDEX IF NOT EXISTS idx_runs_workflow ON agent_runs(workflow_id);
 CREATE INDEX IF NOT EXISTS idx_workouts_completed ON workout_logs(completed_at);
+
+CREATE TABLE IF NOT EXISTS model_prompts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  agent_id TEXT NOT NULL,
+  agent_run_id INTEGER REFERENCES agent_runs(id),
+  provider TEXT NOT NULL,
+  model TEXT NOT NULL,
+  request_json TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('pending', 'answered', 'failed', 'unconfigured')),
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_model_prompts_run ON model_prompts(agent_run_id);

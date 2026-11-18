@@ -15,7 +15,8 @@ const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 function shortDate(value: string) { return new Date(value.replace(' ', 'T') + (value.includes('Z') ? '' : 'Z')).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) }
 function greeting() { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening' }
 
-export default function App({ initialView = 'overview' }: { initialView?: 'overview' | 'tracker' }) {
+export default function App({ initialView = 'overview', onLogout }: { initialView?: 'overview' | 'tracker' | 'profile'; onLogout: () => Promise<void> }) {
+  const [signingOut, setSigningOut] = useState(false)
   const [view, setView] = useState<View>(initialView)
   const [overview, setOverview] = useState<Overview | null>(null)
   const [logs, setLogs] = useState<Log[]>([])
@@ -113,6 +114,16 @@ export default function App({ initialView = 'overview' }: { initialView?: 'overv
     catch (e) { setError(e instanceof Error ? e.message : 'Could not save preferences') }
     finally { setBusy(false) }
   }
+  async function signOut() {
+    if (signingOut) return
+    setSigningOut(true)
+    try { await onLogout() }
+    catch {
+      setError('Sign out failed. Please try again.')
+      setSigningOut(false)
+    }
+  }
+
   async function sendChat(e: React.FormEvent) {
     e.preventDefault(); const message = chatInput.trim(); if (!message || chatBusy) return
     setChatBusy(true); setChatInput(''); setChatHistory(rows => [...rows, { role: 'you', text: message }])
@@ -131,7 +142,7 @@ export default function App({ initialView = 'overview' }: { initialView?: 'overv
 
   return <div className="app-shell">
     <aside className="sidebar">
-      <a href="#/" className="brand" aria-label="FitPilot landing page"><div className="brand-mark"><BrandMark size={28}/></div><span>fitpilot<span className="brand-period">.</span></span></a>
+      <a href="#home" className="brand" aria-label="FitPilot landing page"><div className="brand-mark"><BrandMark size={28}/></div><span>fitpilot<span className="brand-period">.</span></span></a>
       <div className="workspace-label">YOUR WELLNESS SPACE</div>
       <nav className="side-nav" aria-label="Main navigation">
         <button aria-label="Overview" title="Overview" className={view === 'overview' ? 'nav-item active' : 'nav-item'} onClick={() => setView('overview')}><LayoutDashboard size={18} />Overview</button>
@@ -148,7 +159,7 @@ export default function App({ initialView = 'overview' }: { initialView?: 'overv
     </aside>
 
     <main className="main-area">
-      <header className="topbar"><div className="crumb"><span>FitPilot</span><span className="crumb-slash">/</span><strong>{sectionTitle[view]}</strong></div><div className="topbar-actions"><div className="top-avatar">{firstName.slice(0, 1).toUpperCase()}</div></div></header>
+      <header className="topbar"><div className="crumb"><span>FitPilot</span><span className="crumb-slash">/</span><strong>{sectionTitle[view]}</strong></div><div className="topbar-actions"><button className="auth-signout" type="button" disabled={signingOut} onClick={() => void signOut()}>{signingOut ? 'Signing out…' : 'Sign out'}</button><div className="top-avatar">{firstName.slice(0, 1).toUpperCase()}</div></div></header>
       {error && <div className="notice error-notice"><span>{apiReady ? error : 'We couldn’t load your dashboard. Please try again.'}</span><button onClick={() => void refresh()}>Retry</button></div>}
       {!apiReady ? <div className="loading-state"><LoaderCircle className="spin" size={24} /><span>Getting your space ready…</span></div> : <>
         {view === 'overview' && <div className="page-content">

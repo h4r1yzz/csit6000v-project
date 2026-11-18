@@ -16,13 +16,13 @@ A personal fitness and wellness web application for CSIT6000V. FitPilot combines
 
 ## Local setup
 
-Install Git, Python 3.9 or later, and Node.js 20 or later with npm. FitPilot uses ports `5173` for the frontend and `8000` for the API.
+Install Git, Python 3.10 or later, and Node.js 20 or later with npm. FitPilot uses ports `5173` for the frontend and `8000` for the API.
 
 Clone the repository and enter the project folder. If you already have a checkout, start with the dependency commands below.
 
 ```bash
-git clone https://github.com/NehanthKG/CSIT6000V-fitness-tracker.git
-cd CSIT6000V-fitness-tracker
+git clone https://github.com/h4r1yzz/csit6000v-project.git
+cd csit6000v-project
 ```
 
 ### macOS and Linux
@@ -65,7 +65,7 @@ npm.cmd run dev --prefix frontend -- --host 127.0.0.1 --port 5173 --strictPort
 
 Open the [FitPilot dashboard](http://127.0.0.1:5173) after both services start. For the backend, open the [interactive API reference](http://127.0.0.1:8000/docs). Press Ctrl+C in each terminal you started to stop the services.
 
-The API creates `database/fitpilot.db` on first startup and seeds the local profile and catalogs. You can generate plans and query agents using local rules without creating a `.env` file or configuring a model account.
+Choose **Create account** with your name, email and password, then save your goals, diet, equipment and schedule under **Preferences**. Returning users can choose **Sign in**. Each account has its own profile, plans, workouts, conversations and prompt history. You can generate plans and query agents using local rules without creating a `.env` file or configuring a model account.
 
 ### Run in separate terminals on macOS or Linux
 
@@ -159,7 +159,7 @@ FastAPI can serve the built frontend when `frontend/dist` exists at startup; the
 
 ## Scope and limits
 
-This is a local single-profile application with no login, cloud sync, or multi-user access control. The original proposal's hosted Supabase integration is replaced here by a working local SQLite implementation. General wellness suggestions and heuristic pose cues are not a clinical assessment.
+FitPilot uses password login and a private workspace per account. Existing pre-login demo records remain in their original store. New accounts start with fresh histories. General wellness suggestions and heuristic pose cues are not a clinical assessment.
 
 Video remains in the browser. Saving sends derived movement summaries and up to eight numerical 33-landmark snapshots to FastAPI; enabling an LLM sends relevant profile and movement context to that configured service. MediaPipe loads model/WASM assets from the app itself. The Lite model is bundled in frontend/public/models, and npm run dev/build copies WASM files from the installed package. Webcam access requires localhost or HTTPS, browser permission, and compatible hardware. Live TACC inference and camera performance must be verified on the intended device and network.
 

@@ -10,6 +10,8 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
+from . import db
+
 
 class ModelUnavailable(RuntimeError):
     pass
@@ -48,11 +50,11 @@ def chat(
     structured_schema: dict = None,
     tools: Optional[list[dict[str, Any]]] = None,
     tool_choice: str | dict = 'auto',
+    agent_id: Optional[str] = None,
+    agent_run_id: Optional[int] = None,
 ) -> dict[str, Any]:
     """Call chat/completions and return the assistant message object (may include tool_calls)."""
     cfg = configuration()
-    if not cfg['configured']:
-        raise ModelUnavailable('A valid LLM_BASE_URL or QWEN_BASE_URL and model must be configured')
     timeout = _timeout(timeout_override)
     payload: dict[str, Any] = {
         'model': cfg['model'],
@@ -68,6 +70,30 @@ def chat(
         payload['chat_template_kwargs'] = {'enable_thinking': False}
         if structured_schema is not None and not tools:
             payload['structured_outputs'] = {'json': structured_schema}
+    prompt_id = None
+    if agent_id is not None:
+        # Store the model input in the caller's database. HTTP headers and endpoint
+        # credentials are transport settings and never enter the stored body.
+        prompt_id = db.execute(
+            'INSERT INTO model_prompts(agent_id,agent_run_id,provider,model,request_json,status) '
+            'VALUES(?,?,?,?,?,?)',
+            (agent_id, agent_run_id, cfg['provider'], cfg['model'], db.json_dump(payload),
+             'pending' if cfg['configured'] else 'unconfigured'),
+        )
+    if not cfg['configured']:
+        raise ModelUnavailable('A valid LLM_BASE_URL or QWEN_BASE_URL and model must be configured')
+    try:
+        reply = _send_chat(cfg, payload, timeout)
+    except ModelUnavailable:
+        if prompt_id is not None:
+            db.execute('UPDATE model_prompts SET status=? WHERE id=?', ('failed', prompt_id))
+        raise
+    if prompt_id is not None:
+        db.execute('UPDATE model_prompts SET status=? WHERE id=?', ('answered', prompt_id))
+    return reply
+
+
+def _send_chat(cfg: dict, payload: dict, timeout: float) -> dict[str, Any]:
     headers = {'Content-Type': 'application/json'}
     key = os.getenv('LLM_API_KEY', '').strip()
     if key:
@@ -90,13 +116,17 @@ def chat(
         raise ModelUnavailable('The configured model could not complete the request; local rules were used') from exc
 
 
-def ask(messages: list[dict[str, str]], *, temperature: float = 0.2, max_tokens: int = 1600, timeout_override: float = None, structured_schema: dict = None) -> str:
+def ask(messages: list[dict[str, Any]], *, temperature: float = 0.2, max_tokens: int = 1600,
+        timeout_override: float = None, structured_schema: dict = None,
+        agent_id: Optional[str] = None, agent_run_id: Optional[int] = None) -> str:
     message = chat(
         messages,
         temperature=temperature,
         max_tokens=max_tokens,
         timeout_override=timeout_override,
         structured_schema=structured_schema,
+        agent_id=agent_id,
+        agent_run_id=agent_run_id,
     )
     content = message.get('content')
     if not isinstance(content, str) or not content.strip():

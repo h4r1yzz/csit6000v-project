@@ -30,6 +30,7 @@ def migrate(source: Path) -> dict[str, int]:
         with db.migration_connection() as target:
             target.execute('SELECT pg_advisory_xact_lock(60006000)')
             target.raw.execute((db.ROOT / 'database/schema.postgres.sql').read_text())
+            target.raw.execute((db.ROOT / 'database/auth.sql').read_text())
             target.execute('LOCK TABLE ' + ','.join(TABLES) + ' IN ACCESS EXCLUSIVE MODE')
             if any(target.execute(f'SELECT COUNT(*) AS n FROM {table}').fetchone()['n'] for table in TABLES):
                 raise ValueError('Target is not empty. Use a fresh Neon database; no records were overwritten.')

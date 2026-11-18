@@ -4,12 +4,27 @@ import json
 import os
 import re
 import sqlite3
+from contextlib import contextmanager
+from contextvars import ContextVar
 from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
 DB_PATH = Path(os.getenv("FITPILOT_DB_PATH", ROOT / "database" / "fitpilot.db")).expanduser()
 SCHEMA = ROOT / "database" / "schema.sql"
+_ACCOUNT = ContextVar("fitpilot_account", default=None)
+
+
+@contextmanager
+def account_scope(account_id: int | None):
+    """Route all database calls in this request to one verified account."""
+    if account_id is not None and (type(account_id) is not int or account_id <= 0):
+        raise ValueError("Invalid account ID")
+    token = _ACCOUNT.set(account_id)
+    try:
+        yield
+    finally:
+        _ACCOUNT.reset(token)
 
 
 class ClosingConnection(sqlite3.Connection):
@@ -41,12 +56,24 @@ def postgres_query(query: str) -> str:
 
 
 class PostgresConnection:
-    def __init__(self, url: str):
+    def __init__(self, url: str, *, create_schema: bool = False):
         import psycopg
+        from psycopg import sql
         from psycopg.rows import dict_row
         # Neon pooled connections use transaction pooling. Avoid session-local
         # prepared statements and close each connection at the end of the operation.
         self.raw = psycopg.connect(url, row_factory=dict_row, connect_timeout=15, prepare_threshold=None, client_encoding="utf8")
+        account = _ACCOUNT.get()
+        if account is not None:
+            schema = sql.Identifier(f"fitpilot_account_{account}")
+            try:
+                if create_schema:
+                    self.raw.execute(sql.SQL("CREATE SCHEMA IF NOT EXISTS {}").format(schema))
+                # Transaction-local, including when using Neon's transaction pool.
+                self.raw.execute(sql.SQL("SET LOCAL search_path TO {}").format(schema))
+            except Exception:
+                self.raw.close()
+                raise
 
     def __enter__(self):
         return self
@@ -63,7 +90,9 @@ def connect() -> sqlite3.Connection | PostgresConnection:
     if url:
         return PostgresConnection(url)
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    db = sqlite3.connect(DB_PATH, timeout=10, factory=ClosingConnection)
+    account = _ACCOUNT.get()
+    path = DB_PATH if account is None else DB_PATH.with_name(f"{DB_PATH.name}.account-{account}.db")
+    db = sqlite3.connect(path, timeout=10, factory=ClosingConnection)
     db.row_factory = sqlite3.Row
     db.execute("PRAGMA foreign_keys = ON")
     db.execute("PRAGMA journal_mode = WAL")
@@ -74,22 +103,27 @@ def migration_connection() -> PostgresConnection:
     url = os.getenv("DATABASE_URL_UNPOOLED", "").strip() or database_url()
     if not url:
         raise ValueError("A Postgres connection is required for migration")
-    return PostgresConnection(url)
+    return PostgresConnection(url, create_schema=True)
 
 
-def initialize_postgres(seed: bool = True) -> None:
+def initialize_postgres(seed: bool = True, profile_name: str = 'Alex Morgan') -> None:
     with migration_connection() as conn:
         # Serialize schema setup across simultaneous serverless cold starts.
-        conn.execute("SELECT pg_advisory_xact_lock(60006000)")
+        conn.execute("SELECT pg_advisory_xact_lock(?)", (_ACCOUNT.get() or 60006000,))
         conn.raw.execute((ROOT / "database" / "schema.postgres.sql").read_text())
         if seed:
-            conn.execute("INSERT INTO profiles(id,name,goal,experience,weekly_days,minutes_per_session,equipment,dietary_preferences,weekly_budget) VALUES(1,'Alex Morgan','Build strength and feel more energetic','beginner',4,35,'bodyweight, dumbbells','high protein',70) ON CONFLICT DO NOTHING")
+            conn.execute("INSERT INTO profiles(id,name,goal,experience,weekly_days,minutes_per_session,equipment,dietary_preferences,weekly_budget) VALUES(1,?,'Build strength and feel more energetic','beginner',4,35,'bodyweight, dumbbells','high protein',70) ON CONFLICT DO NOTHING", (profile_name,))
             conn.raw.execute((ROOT / "database" / "seed.postgres.sql").read_text())
 
 
-def initialize() -> None:
+def initialize_account(account_id: int, name: str) -> None:
+    with account_scope(account_id):
+        initialize(profile_name=name)
+
+
+def initialize(profile_name: str = 'Alex Morgan') -> None:
     if database_url():
-        initialize_postgres()
+        initialize_postgres(profile_name=profile_name)
         return
     with connect() as db:
         db.executescript(SCHEMA.read_text(encoding="utf-8"))
@@ -105,7 +139,7 @@ def initialize() -> None:
                     db.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
         db.execute(
             "INSERT OR IGNORE INTO profiles(id, name, goal, experience, weekly_days, minutes_per_session, equipment, dietary_preferences, weekly_budget) "
-            "VALUES(1, 'Alex Morgan', 'Build strength and feel more energetic', 'beginner', 4, 35, 'bodyweight, dumbbells', 'high protein', 70)"
+            "VALUES(1, ?, 'Build strength and feel more energetic', 'beginner', 4, 35, 'bodyweight, dumbbells', 'high protein', 70)", (profile_name,)
         )
         seed = ROOT / "database" / "seed.sql"
         db.executescript(seed.read_text(encoding="utf-8"))

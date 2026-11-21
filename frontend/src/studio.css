@@ -12,7 +12,7 @@ body{color:var(--ink);background:#f8faf9}.sidebar{background:#fff;border-color:v
 .guide-playbar button{min-height:44px;padding:8px 4px}.guide-steps button{min-height:44px}
 
 /* Advanced reviewer command center. */
-.coaching-page{width:min(1240px,100%)}
+.coaching-page{width:100%;max-width:none;padding-top:28px}
 .advanced-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:22px}
 .advanced-heading .date-eyebrow{display:flex;align-items:center;gap:7px;font-size:9px;font-weight:700;letter-spacing:1.35px;color:#658072}
 .advanced-heading h1{font-size:32px;letter-spacing:-1.2px;margin:7px 0 5px}

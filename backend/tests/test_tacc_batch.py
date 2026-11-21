@@ -10,6 +10,7 @@ import threading
 import unittest
 
 from app import agents, db
+from pg_harness import POSTGRES_URL
 
 STAGER = db.ROOT / 'scripts' / 'prepare_tacc_client.py'
 
@@ -46,7 +47,7 @@ class TaccBatchTests(unittest.TestCase):
                 'backend/app/prompts/specialists/nutrition.md',
                 'backend/app/prompts/specialists/exercise_feedback.md',
                 'backend/app/prompts/specialists/evaluation_adaptation.md',
-                'database/schema.sql', 'database/seed.sql',
+                'database/schema.postgres.sql', 'database/seed.postgres.sql',
             })
             self.assertEqual((staged / 'server-url.txt').read_text(), 'http://qwen-test-node:8000/v1\n')
             self.assertNotEqual(self.stage('http://different-node:8000/v1', staged).returncode, 0)
@@ -56,6 +57,7 @@ class TaccBatchTests(unittest.TestCase):
                 self.assertNotEqual(invalid.returncode, 0)
                 self.assertFalse((root / 'invalid').exists())
 
+    @unittest.skipUnless(POSTGRES_URL, 'Set TEST_DATABASE_URL or DATABASE_URL for Postgres tests')
     def test_batch_calls_tacc_and_preserves_model_provenance_and_fallback(self):
         requests = []
         class Handler(BaseHTTPRequestHandler):
@@ -100,12 +102,16 @@ class TaccBatchTests(unittest.TestCase):
                 staging = self.stage(endpoint, staged)
                 self.assertEqual(staging.returncode, 0, staging.stderr)
                 userdir = root / 'userdir'
+                from pg_harness import POSTGRES_ADMIN_URL
                 env = {
                     **os.environ,
                     'TACC_USERDIR': str(userdir),
+                    'DATABASE_URL': POSTGRES_URL,
+                    'DATABASE_URL_UNPOOLED': POSTGRES_ADMIN_URL or POSTGRES_URL,
+                    'PGOPTIONS': '',
+                    'FITPILOT_TEST_SCHEMA': '',
                     'LLM_BASE_URL': 'http://unused.local/v1',
                     'LLM_API_KEY': 'inherited-test-value',
-                    'FITPILOT_DB_PATH': str(root / 'must-not-create.db'),
                     'HTTP_PROXY': 'http://127.0.0.1:1',
                     'http_proxy': 'http://127.0.0.1:1',
                     'NO_PROXY': '',
@@ -119,7 +125,6 @@ class TaccBatchTests(unittest.TestCase):
                 self.assertTrue(report['workflow']['requires_approval'])
                 self.assertEqual(len(requests), 5)
                 self.assertEqual(outcome.stdout.count('SOURCE=tacc_qwen'), 5)
-                self.assertFalse((root / 'must-not-create.db').exists())
                 for path, headers, body in requests:
                     self.assertEqual(path, '/v1/chat/completions')
                     self.assertNotIn('Authorization', headers)
@@ -156,7 +161,7 @@ class TaccBatchTests(unittest.TestCase):
             env={**env, 'SLURM_JOB_ID': job_id},
             capture_output=True,
             text=True,
-            timeout=20,
+            timeout=180,
         )
 
     def read_report(self, userdir, job_id):

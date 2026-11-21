@@ -1,12 +1,12 @@
 # Run FitPilot locally with TACC Qwen
 
-Start the React dashboard and FastAPI backend on your computer using the [local setup guide](../../README.md). MediaPipe analyzes webcam and video in the browser. FastAPI runs the five agents and stores the profile, plans, and logs in your local SQLite database. A GPU job in the CSIT6000V public Project environment serves `qwen3.8-27b` for the agents' model requests.
+Start the React dashboard and FastAPI backend on your computer using the [local setup guide](../../README.md). MediaPipe analyzes webcam and video in the browser. FastAPI runs the five agents and stores the profile, plans, and logs in Neon Postgres (`DATABASE_URL`). A GPU job in the CSIT6000V public Project environment serves `qwen3.8-27b` for the agents' model requests.
 
 ```mermaid
 flowchart LR
     subgraph Local[Your computer]
         Browser[React dashboard and browser pose tracking] --> API[FastAPI and agents]
-        API <--> DB[(SQLite)]
+        API <--> DB[(Neon Postgres)]
     end
     API -->|Model requests| Qwen[TACC GPU job running Qwen]
 ```
@@ -111,7 +111,7 @@ With either connection, check reachability from FastAPI.
 curl -fsS http://127.0.0.1:8000/api/model/status
 ```
 
-Check `reachable` in the response. When it is `true`, open the dashboard and run an agent. Inspect the source shown on its result. FitPilot sends model prompts with relevant context, including saved pose measurements for exercise feedback. The video frames, pose inference, and SQLite database stay local. The model is bundled locally and the build copies WASM assets from the installed MediaPipe package.
+Check `reachable` in the response. When it is `true`, open the dashboard and run an agent. Inspect the source shown on its result. FitPilot sends model prompts with relevant context, including saved pose measurements for exercise feedback. Video frames and pose inference stay in the browser; profile data lives in Neon. The model is bundled locally and the build copies WASM assets from the installed MediaPipe package.
 
 ## Optional validation inside TACC
 
@@ -132,7 +132,7 @@ python3 "$FITPILOT_ROOT/scripts/prepare_tacc_client.py" \
   --output "$FITPILOT_TACC_RUN/client"
 ```
 
-The output directory must be new and outside the repository. The staging directory contains the batch entry point, the FitPilot backend code it needs, and the SQLite schema and seed catalog. The job uses a synthetic profile in a temporary database and UTC for week boundaries. Your local SQLite file, account keys, `.env` files, and Git metadata stay on your machine.
+The output directory must be new and outside the repository. The staging directory contains the batch entry point, the FitPilot backend code it needs, and the Postgres schema/seed files. The job requires `DATABASE_URL` (and `psycopg`) in the CPU runtime, creates a disposable schema, runs with UTC week boundaries, then drops the schema. Keep Neon credentials out of the repository; pass them through the job environment.
 
 Keep the GPU service running and submit the CPU job from the staged directory.
 

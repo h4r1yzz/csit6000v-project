@@ -25,11 +25,8 @@ PUBLIC_ROUTES = {"/api/health", "/api/auth/register", "/api/auth/login"}
 def initialize_registry() -> None:
     schema = (db.ROOT / "database/auth.sql").read_text(encoding="utf-8")
     with db.account_scope(None), db.connect() as conn:
-        if isinstance(conn, db.PostgresConnection):
-            conn.execute("SELECT pg_advisory_xact_lock(60006000)")
-            conn.raw.execute(schema)
-        else:
-            conn.executescript(schema)
+        conn.execute("SELECT pg_advisory_xact_lock(60006000)")
+        conn.raw.execute(schema)
 
 
 class Login(BaseModel):

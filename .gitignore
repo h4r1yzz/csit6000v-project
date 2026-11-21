@@ -33,3 +33,6 @@ frontend/public/mediapipe/wasm/
 .env.*
 !.env.example
 .neon
+
+# Local Canvas PDF (do not commit)
+submission/

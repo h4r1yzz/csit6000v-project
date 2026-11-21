@@ -1,6 +1,6 @@
 # FitPilot implementation
 
-FitPilot is a local web application for the CSIT6000V project. The React frontend handles the dashboard, preferences, plan review, movement journal, agent workspace, and MediaPipe pose tracking. FastAPI coordinates specialized planning agents and stores user context in SQLite. A live OpenAI-compatible model is required for planning, specialists and coach chat. Deterministic helpers validate and normalize outputs; they do not substitute successful agent responses after model failure.
+FitPilot is a local web application for the CSIT6000V project. The React frontend handles the dashboard, preferences, plan review, movement journal, agent workspace, and MediaPipe pose tracking. FastAPI coordinates specialized planning agents and stores user context in Neon Postgres (`DATABASE_URL`). A live OpenAI-compatible model is required for planning, specialists and coach chat. Deterministic helpers validate and normalize outputs; they do not substitute successful agent responses after model failure.
 
 ## Architecture
 
@@ -23,7 +23,7 @@ flowchart TD
     Camera[Webcam or local video] --> MediaPipe[Browser MediaPipe inference]
     MediaPipe --> Metrics[Angles, reps, confidence, form cues]
     Metrics --> Feedback
-    API <--> DB[(SQLite)]
+    API <--> DB[(Neon Postgres)]
     Coordinator -. model requests .-> LLM[OpenAI-compatible LLM / TACC Qwen]
 ```
 

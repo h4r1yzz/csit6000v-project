@@ -15,7 +15,8 @@ Put private values in `backend/.env`. Start with `python3 scripts/dev.py`, or ru
 | `QWEN_BASE_URL` | Course TACC Qwen service base including `/v1`. Used when `LLM_BASE_URL` is unset. |
 | `QWEN_MODEL` | TACC model identifier; default `qwen3.8-27b`. |
 | `QWEN_TIMEOUT_SECONDS` | Legacy TACC timeout setting. |
-| `FITPILOT_DB_PATH` | SQLite file path. Default: project `database/fitpilot.db`. A relative path is resolved from the backend process working directory. |
+| `DATABASE_URL` | Required Neon/Postgres connection string (pooled URL is fine for app traffic). |
+| `DATABASE_URL_UNPOOLED` | Optional direct URL for schema setup; defaults to `DATABASE_URL`. |
 | `FITPILOT_TIMEZONE` | Calendar timezone for progress calculations; default `Asia/Hong_Kong`. |
 | `CORS_ORIGINS` | Comma-separated browser origins permitted to call the API. Defaults to the local Vite origins. |
 

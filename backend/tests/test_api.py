@@ -1,9 +1,6 @@
 import json
 import os
 import re
-from pathlib import Path
-import sqlite3
-import tempfile
 import unittest
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -12,30 +9,28 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 from app import agents, db, tacc
 from app.main import app
+from pg_harness import POSTGRES_URL, isolated_schema
 
 
+@unittest.skipUnless(POSTGRES_URL, 'Set TEST_DATABASE_URL or DATABASE_URL for Postgres tests')
 class FitPilotTests(unittest.TestCase):
     def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
-        self.previous_path = db.DB_PATH
-        db.DB_PATH = Path(self.tmp.name) / 'fitness.db'
-        self.env = patch.dict(os.environ, {'QWEN_BASE_URL': '', 'LLM_BASE_URL': ''})
-        self.env.start()
+        self._schema_cm = isolated_schema()
+        self.schema, self.account_schemas = self._schema_cm.__enter__()
         self.client_context = TestClient(app)
         self.client = self.client_context.__enter__()
         self.client.post('/api/auth/register', json={
             'name': 'Alex Morgan', 'email': 'alex@example.test', 'password': 'example-password-123',
         }).raise_for_status()
         self.account_id = int(self.client.get('/api/auth/me').json()['id'])
+        self.account_schemas.append(f'fitpilot_account_{self.account_id}')
         self.account_context = db.account_scope(self.account_id)
         self.account_context.__enter__()
 
     def tearDown(self):
         self.account_context.__exit__(None, None, None)
         self.client_context.__exit__(None, None, None)
-        self.env.stop()
-        db.DB_PATH = self.previous_path
-        self.tmp.cleanup()
+        self._schema_cm.__exit__(None, None, None)
 
     def stage_answers(self, ctx=None):
         ctx = ctx or agents.context()
@@ -292,59 +287,16 @@ class FitPilotTests(unittest.TestCase):
     def test_invalid_model_configuration_and_timeout_are_bounded(self):
         with patch.dict(os.environ, {'LLM_BASE_URL':'http://bad host/v1'}):
             self.assertFalse(tacc.configuration()['configured'])
-        with patch.dict(os.environ, {'LLM_BASE_URL':'http://localhost:1234/v1', 'LLM_TIMEOUT_SECONDS':'invalid'}):
+        with patch.dict(os.environ, {'LLM_BASE_URL':'http://localhost:1234/v1', 'LLM_MODEL':'test-model', 'LLM_TIMEOUT_SECONDS':'invalid'}):
             with patch('app.tacc.urlopen', side_effect=tacc.URLError('offline')) as request:
                 with self.assertRaises(tacc.ModelUnavailable):
                     tacc.ask([{'role':'user','content':'hello'}])
                 self.assertEqual(request.call_args.kwargs['timeout'], 45)
-        with patch.dict(os.environ, {'LLM_BASE_URL':'http://localhost:1234/v1', 'LLM_TIMEOUT_SECONDS':'9999999'}):
+        with patch.dict(os.environ, {'LLM_BASE_URL':'http://localhost:1234/v1', 'LLM_MODEL':'test-model', 'LLM_TIMEOUT_SECONDS':'9999999'}):
             with patch('app.tacc.urlopen', side_effect=tacc.URLError('offline')) as request:
                 with self.assertRaises(tacc.ModelUnavailable):
                     tacc.ask([{'role':'user','content':'hello'}])
                 self.assertEqual(request.call_args.kwargs['timeout'], 120)
-
-    def test_legacy_checkout_migration_preserves_user_data(self):
-        path = Path(self.tmp.name) / 'legacy.db'
-        fixture = Path(__file__).parent / 'fixtures' / 'legacy_schema.sql'
-        old_content = json.dumps({'summary':'My existing plan', 'workouts':[{'day':'Monday','focus':'Legacy strength','duration_minutes':25,'exercises':[{'name':'Squat','sets':2,'reps':'8'}]}], 'meals':[{'name':'Lentil tomato soup','why':'Existing meal choice'}], 'adaptation_note':'My note', 'safety_note':'Keep comfortable'})
-        with sqlite3.connect(path) as conn:
-            conn.executescript(fixture.read_text())
-            conn.execute("INSERT INTO profiles(id,name,goal,experience,weekly_days,minutes_per_session,equipment,dietary_preferences,weekly_budget) VALUES(1,'Legacy owner','Keep my saved goal','intermediate',3,25,'dumbbells','vegetarian',81)")
-            conn.execute("INSERT INTO workout_logs(exercise,duration_minutes,perceived_effort,notes) VALUES('My saved workout',23,7,'Keep this journal entry')")
-            conn.execute("INSERT INTO plans(title,content_json,source,is_active) VALUES('Legacy Qwen plan',?,'tacc_qwen',1)", (old_content,))
-            conn.execute("INSERT INTO plans(title,content_json,source,is_active) VALUES('Legacy local plan',?,'local_fallback',0)", (old_content,))
-            conn.execute("INSERT INTO recipes(name,calories,protein_g,cost,dietary_tags,ingredients) VALUES('My custom recipe',400,25,3,'vegetarian','Custom ingredients')")
-        with sqlite3.connect(path) as legacy, db.connect() as account_db:
-            legacy.backup(account_db)
-        db.initialize()
-        db.initialize()
-        profile = self.client.get('/api/profile').json()
-        self.assertEqual(profile['name'], 'Legacy owner')
-        self.assertEqual(profile['goal'], 'Keep my saved goal')
-        self.assertEqual(profile['weekly_budget'], 81)
-        self.assertEqual(profile['scheduled_days'], [])
-        self.assertEqual(profile['food_allergies'], '')
-        self.assertEqual(profile['limitations'], '')
-        self.assertEqual(profile['budget_currency'], 'USD')
-        logs = self.client.get('/api/workouts').json()
-        self.assertEqual(len(logs), 1)
-        self.assertEqual(logs[0]['notes'], 'Keep this journal entry')
-        plans = db.rows('SELECT * FROM plans ORDER BY id')
-        self.assertEqual(len(plans), 2)
-        self.assertEqual([p['content_json'] for p in plans], [old_content, old_content])
-        self.assertEqual([p['source'] for p in plans], ['tacc_qwen', 'local_fallback'])
-        self.assertEqual([p['is_active'] for p in plans], [1, 0])
-        self.assertTrue(all(p['workflow_id'] is None and p['execution_source'] is None for p in plans))
-        active = self.client.get('/api/overview').json()['active_plan']
-        self.assertEqual(active['title'], 'Legacy Qwen plan')
-        self.assertEqual(active['content'], json.loads(old_content))
-        self.assertIsNotNone(db.one("SELECT id FROM recipes WHERE name='My custom recipe'"))
-        draft = self.generate()
-        self.assertEqual(len(draft['steps']), 5)
-        summary = {'exercise':'Squat','duration_seconds':10,'reps':2,'analyzed_frames':50,'average_confidence':0.8,'range_of_motion':{'min':80,'max':170},'form_cues':[], 'source':'upload'}
-        self.assertEqual(self.client.post('/api/pose-sessions', json=summary).status_code, 200)
-        self.assertEqual(self.client.get('/api/overview').json()['active_plan']['title'], 'Legacy Qwen plan')
-
 
     @unittest.skipUnless((db.ROOT / 'frontend' / 'dist' / 'index.html').is_file(), 'Build frontend first to check SPA hosting')
     def test_built_frontend_and_api_routes_are_served_together(self):
@@ -435,7 +387,7 @@ class FitPilotTests(unittest.TestCase):
                 'source': 'llm',
             },
         ]
-        with patch.dict(os.environ, {'LLM_BASE_URL': 'http://localhost:12345/v1'}):
+        with patch.dict(os.environ, {'LLM_BASE_URL': 'http://localhost:12345/v1', 'LLM_MODEL': 'test-model'}):
             with patch('app.tacc.chat', side_effect=calls) as chat:
                 result = self.client.post('/api/assistant/chat', json={'message': 'What is my goal?'}).json()
         self.assertEqual(chat.call_count, 2)

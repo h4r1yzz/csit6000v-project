@@ -1,25 +1,22 @@
-import os
-import tempfile
 import unittest
-from pathlib import Path
-from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 from app import db
 from app.main import app
+from pg_harness import POSTGRES_URL, isolated_schema
 
 
+@unittest.skipUnless(POSTGRES_URL, 'Set TEST_DATABASE_URL or DATABASE_URL for Postgres tests')
 class SessionBoundaryTest(unittest.TestCase):
     def test_origin_check_expiry_and_credential_storage(self):
-        with tempfile.TemporaryDirectory() as folder, patch.object(db, "DB_PATH", Path(folder) / "fitpilot.db"), patch.dict(
-            os.environ, {"DATABASE_URL": "", "VERCEL": ""}
-        ), TestClient(app) as client:
+        with isolated_schema() as (_schema, account_schemas), TestClient(app) as client:
             signup = {"email": "MEMBER@example.test", "name": "Member", "password": "a-local-passphrase"}
             cross_origin = {"Origin": "https://foreign.example"}
             rejected = client.post("/api/auth/register", json=signup, headers=cross_origin)
             self.assertEqual(rejected.status_code, 403)
             created = client.post("/api/auth/register", json=signup)
             self.assertEqual(created.status_code, 201)
+            account_schemas.append(f"fitpilot_account_{created.json()['id']}")
             self.assertIn("HttpOnly", created.headers["set-cookie"])
             self.assertEqual(created.json()["email"], "member@example.test")
             duplicate = client.post("/api/auth/register", json={**signup, "email": "member@example.test"})

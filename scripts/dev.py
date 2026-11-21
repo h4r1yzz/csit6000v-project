@@ -89,7 +89,7 @@ def main() -> int:
             backend_env.update(QWEN_BASE_URL=endpoint, QWEN_MODEL="qwen3.8-27b",
                                LLM_BASE_URL="", LLM_API_KEY="", NO_PROXY=bypass, no_proxy=bypass)
         print("Starting FitPilot. UI: http://127.0.0.1:5173  API docs: http://127.0.0.1:8000/docs", flush=True)
-        print("Press Ctrl+C to stop local services. Your SQLite database will be kept.", flush=True)
+        print("Press Ctrl+C to stop local services. Neon/Postgres data is unchanged.", flush=True)
         for command, directory, env in ((api_command, BACKEND, backend_env), (ui_command, FRONTEND, None)):
             processes.append(subprocess.Popen(command, cwd=directory, env=env, start_new_session=(os.name == "posix")))
         next_job_check = time.monotonic() + 30

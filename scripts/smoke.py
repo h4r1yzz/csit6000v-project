@@ -3,25 +3,27 @@ import json
 import os
 from pathlib import Path
 import sys
-import tempfile
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'backend'))
+sys.path.insert(0, str(ROOT / 'backend' / 'tests'))
 from fastapi.testclient import TestClient
 from app import agents, db
 from app.main import app
+from pg_harness import isolated_schema, require_postgres_url
 
 
 def main():
-    with tempfile.TemporaryDirectory() as directory, patch.object(db, 'DB_PATH', Path(directory) / 'smoke.db'), patch.dict(os.environ, {
-        'DATABASE_URL': '', 'DATABASE_URL_UNPOOLED': '', 'VERCEL': '',
+    require_postgres_url()
+    with isolated_schema(clear_llm=False) as (_schema, account_schemas), patch.dict(os.environ, {
         'LLM_BASE_URL': 'http://simulated-model.invalid/v1', 'LLM_MODEL': 'simulated-smoke', 'QWEN_BASE_URL': '',
     }), TestClient(app) as client:
         registered = client.post('/api/auth/register', json={
             'name': 'Smoke Reviewer', 'email': 'reviewer@example.test', 'password': 'smoke-password-123',
         })
         registered.raise_for_status()
+        account_schemas.append(f"fitpilot_account_{registered.json()['id']}")
         with db.account_scope(registered.json()['id']):
             ctx = agents.context()
             goal = agents.fallback('goal_planning', ctx)

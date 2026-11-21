@@ -1,4 +1,4 @@
-"""Run the FitPilot workflow from the course CPU job with a disposable database."""
+"""Run the FitPilot workflow from the course CPU job with a disposable Postgres schema."""
 from __future__ import annotations
 
 import json
@@ -9,6 +9,7 @@ import sys
 import tempfile
 import time
 import traceback
+import uuid
 from urllib.parse import urlsplit
 
 MODEL = 'qwen3.8-27b'
@@ -38,15 +39,23 @@ def validate_service_url(value: str) -> str:
     return url
 
 
-def configure_model(service_url: str, database: Path) -> None:
+def configure_model(service_url: str) -> str:
     # Isolate course model configuration from credentials and paths inherited by the job.
-    for key in ('LLM_BASE_URL', 'LLM_MODEL', 'LLM_API_KEY', 'LLM_TIMEOUT_SECONDS'):
+    for key in ('LLM_BASE_URL', 'LLM_MODEL', 'LLM_API_KEY', 'LLM_TIMEOUT_SECONDS', 'FITPILOT_DB_PATH'):
         os.environ.pop(key, None)
+    database_url = os.environ.get('DATABASE_URL', '').strip()
+    if not database_url.startswith(('postgres://', 'postgresql://')):
+        raise RuntimeError('Set DATABASE_URL to a disposable Neon/Postgres database for the TACC client.')
+    admin_url = os.environ.get('DATABASE_URL_UNPOOLED', '').strip() or database_url
+    schema = 'tacc_' + uuid.uuid4().hex
     os.environ.update(
         QWEN_BASE_URL=service_url,
         QWEN_MODEL=MODEL,
         QWEN_TIMEOUT_SECONDS='120',
-        FITPILOT_DB_PATH=str(database),
+        DATABASE_URL=database_url,
+        DATABASE_URL_UNPOOLED=admin_url,
+        FITPILOT_TEST_SCHEMA=schema,
+        PGOPTIONS='',
         # The course runtime has no IANA timezone database. The demo uses UTC.
         FITPILOT_TIMEZONE='UTC',
     )
@@ -55,6 +64,21 @@ def configure_model(service_url: str, database: Path) -> None:
     if ':' in hostname:
         bypass.append(f'[{hostname}]')
     os.environ['no_proxy'] = os.environ['NO_PROXY'] = ','.join(value for value in bypass if value)
+    import psycopg
+    from psycopg import sql
+    with psycopg.connect(admin_url, autocommit=True) as admin:
+        admin.execute(sql.SQL('CREATE SCHEMA {}').format(sql.Identifier(schema)))
+    return schema
+
+
+def drop_schema(schema: str) -> None:
+    import psycopg
+    from psycopg import sql
+    url = os.environ.get('DATABASE_URL_UNPOOLED', '').strip() or os.environ.get('DATABASE_URL', '').strip()
+    if not url or not schema:
+        return
+    with psycopg.connect(url, autocommit=True) as admin:
+        admin.execute(sql.SQL('DROP SCHEMA IF EXISTS {} CASCADE').format(sql.Identifier(schema)))
 
 
 def check_runtime() -> None:
@@ -67,6 +91,10 @@ def check_runtime() -> None:
     version_match = re.match(r'^2\.(\d+)', version)
     if not version_match or int(version_match[1]) < 8:
         raise RuntimeError('The course qwen-python runtime needs Pydantic 2.8 or newer in the 2.x series.')
+    try:
+        import psycopg  # noqa: F401
+    except ImportError as exc:
+        raise RuntimeError('The course runtime needs psycopg to use Neon/Postgres.') from exc
 
 
 def save_result(userdir: Path, relative: Path, result: dict) -> None:
@@ -94,22 +122,21 @@ def main() -> int:
     relative = Path(RESULT_DIR) / f'fitpilot-job-{job_id}.json'
     result = {'job_id': job_id, 'model': MODEL, 'status': 'failed', 'workflow': None}
     started = time.monotonic()
+    schema = ''
     try:
         url_file = Path(__file__).resolve().with_name('server-url.txt')
         service_url = validate_service_url(url_file.read_text(encoding='utf-8'))
         check_runtime()
-        with tempfile.TemporaryDirectory(prefix='fitpilot-tacc-') as directory:
-            configure_model(service_url, Path(directory) / 'fitpilot.db')
-            # Import after setting the disposable DB path.
-            from backend.app import agents, db
+        schema = configure_model(service_url)
+        from backend.app import agents, db
 
-            db.initialize()
-            try:
-                workflow = agents.workflow_plan()
-            except Exception:
-                rows = db.rows('SELECT * FROM agent_runs ORDER BY id')
-                result['partial_steps'] = [agents.run_row(row) for row in rows]
-                raise
+        db.initialize()
+        try:
+            workflow = agents.workflow_plan()
+        except Exception:
+            rows = db.rows('SELECT * FROM agent_runs ORDER BY id')
+            result['partial_steps'] = [agents.run_row(row) for row in rows]
+            raise
 
         result['workflow'] = workflow
         if any(step['source'] != 'tacc_qwen' for step in workflow['steps']):
@@ -124,6 +151,11 @@ def main() -> int:
     except Exception as exc:
         result['error'] = type(exc).__name__
         traceback.print_exc()
+    finally:
+        try:
+            drop_schema(schema)
+        except Exception as exc:
+            print(f'Could not drop disposable schema: {exc}', file=sys.stderr)
 
     result['elapsed_seconds'] = round(time.monotonic() - started, 3)
     steps = (result['workflow'] or {}).get('steps', result.get('partial_steps', []))

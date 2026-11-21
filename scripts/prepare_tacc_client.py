@@ -28,8 +28,8 @@ SOURCE_FILES = (
     'backend/app/prompts/specialists/nutrition.md',
     'backend/app/prompts/specialists/exercise_feedback.md',
     'backend/app/prompts/specialists/evaluation_adaptation.md',
-    'database/schema.sql',
-    'database/seed.sql',
+    'database/schema.postgres.sql',
+    'database/seed.postgres.sql',
 )
 
 

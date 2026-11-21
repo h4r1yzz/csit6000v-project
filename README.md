@@ -16,6 +16,7 @@ Use this section to install FitPilot and confirm basic functionality within abou
 - Free local ports `5173` (UI) and `8000` (API)
 - Internet access to install dependencies
 - macOS or Linux for the recorded one-command launcher (`scripts/dev.py`)
+- A Neon (or other Postgres) database URL for `DATABASE_URL` (prefer a disposable branch for tests)
 
 No local GPU is required for setup or the simulated end-to-end check. Live planning and coaching need a reachable model endpoint (course TACC Qwen or another OpenAI-compatible service).
 
@@ -30,7 +31,7 @@ backend/.venv/bin/python -m pip install -r backend/requirements.txt
 npm ci --prefix frontend
 ```
 
-Optional model config: copy `backend/.env.example` to `backend/.env` and set `QWEN_BASE_URL` or `LLM_BASE_URL`. `scripts/dev.py` loads that file automatically. Without a reachable model, account/catalog/pose features still work; plan generation, specialist agents, and coach chat return HTTP 503.
+Copy `backend/.env.example` to `backend/.env` and set `DATABASE_URL` (required). Optionally set `QWEN_BASE_URL` or `LLM_BASE_URL` for a model. `scripts/dev.py` loads that file automatically. Without a reachable model, account/catalog/pose features still work; plan generation, specialist agents, and coach chat return HTTP 503.
 
 Start the API and UI:
 
@@ -54,6 +55,7 @@ From the repository root, after setup:
 
 ```bash
 backend/.venv/bin/python -m pip install -r backend/requirements-dev.txt
+# Uses TEST_DATABASE_URL or DATABASE_URL; creates a disposable schema then drops it.
 backend/.venv/bin/python scripts/smoke.py
 ```
 
@@ -64,7 +66,7 @@ PASS: account -> five simulated model stages -> valid draft -> approval -> persi
 SIMULATED MODEL: this checks application integration, not live inference or recommendation quality.
 ```
 
-This uses an isolated temporary database and real API routes. Only the model transport is simulated. It does not contact a live model or change your normal application database.
+This uses an isolated Postgres schema and real API routes. Only the model transport is simulated. It does not contact a live model. Prefer a disposable Neon branch so smoke/verify do not share production data.
 
 ## Detailed Instructions
 
@@ -76,6 +78,7 @@ Reproduce the checks recorded in `evaluation/results/`:
 
 ```bash
 backend/.venv/bin/python -m pip install -r backend/requirements-dev.txt
+# Export DATABASE_URL or TEST_DATABASE_URL first (disposable Neon branch recommended).
 backend/.venv/bin/python scripts/verify.py
 ```
 
@@ -84,18 +87,18 @@ backend/.venv/bin/python scripts/verify.py
 | Check | Command | Expected |
 | --- | --- | --- |
 | Frontend build | `npm run build --prefix frontend` | Exit 0 |
-| Backend tests | `cd backend && .venv/bin/python -m unittest discover -s tests -v` | Pass (PostgreSQL tests skipped unless `TEST_DATABASE_URL` is set) |
+| Backend tests | `cd backend && .venv/bin/python -m unittest discover -s tests -v` | Pass (requires `DATABASE_URL` / `TEST_DATABASE_URL`) |
 | Pose unit tests | `node --test frontend/src/pose/analysis.test.mjs` | Pass |
 | API smoke | `backend/.venv/bin/python scripts/smoke.py` | `PASS: account -> five simulated model stages...` |
 
 Recorded run (2026-11-21, Asia/Hong_Kong; see `evaluation/results/verification.json`):
 
 - `frontend_build`: PASS
-- `backend_tests`: 38 passed, 28 PostgreSQL tests skipped, 0 failures
+- `backend_tests`: 38 passed, 28 PostgreSQL tests skipped, 0 failures (pre-Neon SQLite recording; re-run `scripts/verify.py` against Postgres to refresh)
 - `pose_tests`: 17 passed
 - `api_smoke`: PASS
 
-Logs: `evaluation/results/*.log`. Scope: SQLite + simulated-model / synthetic-landmark integration. **Not** live inference quality, real-video accuracy, or PostgreSQL deployment results.
+Logs: `evaluation/results/*.log`. Current app/tests require Postgres. The checked-in recording above is the last deterministic run before the SQLite removal. **Not** live inference quality or real-video accuracy.
 
 Validate evaluation case files without calling a model:
 
@@ -115,7 +118,7 @@ Expected: a `PASS` line confirming the planning or adaptation cases satisfy the 
 | Smoke / verify runner | `scripts/smoke.py`, `scripts/verify.py` | Deterministic integration checks |
 | Live comparison runner | `scripts/evaluate.py` | Real model calls for planning/adaptation suites |
 | Recorded verify outputs | `evaluation/results/` | Logs + `verification.json` from the recorded deterministic run |
-| Default app config | `backend/.env.example` | Model URL, timeouts, timezone, CORS; local SQLite unless `DATABASE_URL` is set |
+| Default app config | `backend/.env.example` | Required `DATABASE_URL`, model URL, timeouts, timezone, CORS |
 
 Live evaluation (requires a reachable model in `backend/.env`):
 
@@ -146,7 +149,7 @@ Update the table numbers after the final report is fixed. Until then, claims are
 - Simulated smoke/verify results are not model-quality or real-video accuracy measurements.
 - Live model text, exercise choices, latency, and token counts vary with provider version, GPU queue, network, and sampling. Use at least three repeats and report spread when claiming live results.
 - Exact generated wording is not expected to match across runs. No numerical acceptance tolerance is established for live comparison until those result files are included and cited in the report.
-- Optional Neon/Postgres deployment is documented in `docs/DEPLOY-VERCEL.md` and is outside the default SQLite verification.
+- Neon/Postgres is required for the app and for smoke/verify. Deployment notes: `docs/DEPLOY-VERCEL.md`.
 
 ### Further documentation
 

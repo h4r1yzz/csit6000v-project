@@ -1,4 +1,4 @@
-"""Run local artifact checks and save auditable logs without loading private .env files."""
+"""Run local artifact checks and save auditable logs without loading private model .env secrets."""
 import argparse
 import json
 import os
@@ -16,9 +16,16 @@ def main():
     parser.add_argument('--output', type=Path, default=ROOT / 'evaluation/results/verification.json')
     args = parser.parse_args()
     args.output.parent.mkdir(parents=True, exist_ok=True)
+    db_url = (os.environ.get('TEST_DATABASE_URL') or os.environ.get('DATABASE_URL') or '').strip()
+    if not db_url:
+        print('Set TEST_DATABASE_URL or DATABASE_URL (disposable Neon/Postgres) before verify.', file=sys.stderr)
+        return 1
     env = dict(os.environ)
-    for key in ('DATABASE_URL', 'DATABASE_URL_UNPOOLED', 'TEST_DATABASE_URL', 'VERCEL', 'LLM_BASE_URL', 'QWEN_BASE_URL'):
+    for key in ('VERCEL', 'LLM_BASE_URL', 'QWEN_BASE_URL', 'LLM_API_KEY', 'QWEN_API_KEY'):
         env[key] = ''
+    env['DATABASE_URL'] = db_url
+    env['DATABASE_URL_UNPOOLED'] = os.environ.get('DATABASE_URL_UNPOOLED', '').strip() or db_url
+    env['TEST_DATABASE_URL'] = db_url
     env['FITPILOT_TIMEZONE'] = 'UTC'
     npm = 'npm.cmd' if os.name == 'nt' else 'npm'
     commands = [
@@ -27,10 +34,15 @@ def main():
         ('pose_tests', ['node', '--test', 'frontend/src/pose/analysis.test.mjs'], ROOT),
         ('api_smoke', [sys.executable, 'scripts/smoke.py'], ROOT),
     ]
-    result = {'timestamp_utc': datetime.now(timezone.utc).isoformat(), 'python': platform.python_version(),
-              'platform': platform.platform(), 'scope': 'SQLite and simulated-model integration; no live model, real video or Postgres claims',
-              'base_commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip(),
-              'working_tree_modified': bool(subprocess.check_output(['git', 'status', '--porcelain'], cwd=ROOT, text=True).strip()), 'checks': []}
+    result = {
+        'timestamp_utc': datetime.now(timezone.utc).isoformat(),
+        'python': platform.python_version(),
+        'platform': platform.platform(),
+        'scope': 'Postgres + simulated-model / synthetic-landmark integration; no live model or real-video claims',
+        'base_commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip(),
+        'working_tree_modified': bool(subprocess.check_output(['git', 'status', '--porcelain'], cwd=ROOT, text=True).strip()),
+        'checks': [],
+    }
     for name, command, cwd in commands:
         print(f'Running {name}', flush=True)
         try:

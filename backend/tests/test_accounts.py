@@ -1,7 +1,5 @@
 import json
 import os
-from pathlib import Path
-import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -9,21 +7,24 @@ from fastapi.testclient import TestClient
 
 from app import agents, db
 from app.main import app
+from pg_harness import POSTGRES_URL, isolated_schema
 
 
+@unittest.skipUnless(POSTGRES_URL, 'Set TEST_DATABASE_URL or DATABASE_URL for Postgres tests')
 class AccountIsolationTest(unittest.TestCase):
     def test_private_recommendations_history_and_logout(self):
-        with tempfile.TemporaryDirectory() as folder, patch.object(db, 'DB_PATH', Path(folder) / 'demo.db'), patch.dict(os.environ, {
-            'DATABASE_URL': '', 'VERCEL': '', 'QWEN_BASE_URL': '', 'LLM_BASE_URL': '',
-        }), TestClient(app) as ada, TestClient(app) as sam:
+        with isolated_schema() as (_schema, account_schemas), TestClient(app) as ada, TestClient(app) as sam:
             self.assertEqual(ada.get('/api/overview').status_code, 401)
             password = 'example-passphrase'
+
             def register(client, name):
                 response = client.post('/api/auth/register', json={
                     'name': name, 'email': f'{name.lower()}@example.test', 'password': password,
                 })
                 self.assertEqual(response.status_code, 201, response.text)
-                return response.json()['id']
+                account_id = response.json()['id']
+                account_schemas.append(f'fitpilot_account_{account_id}')
+                return account_id
 
             ada_id = register(ada, 'Ada')
             sam_id = register(sam, 'Sam')
@@ -32,7 +33,6 @@ class AccountIsolationTest(unittest.TestCase):
             profile.update(goal='Train for a walking holiday', minutes_per_session=20)
             ada.put('/api/profile', json=profile).raise_for_status()
             question = 'Plan my walking holiday training'
-            # Exercise the real prompt logging path with a simulated model transport.
             with db.account_scope(ada_id):
                 goal = agents.fallback('goal_planning', agents.context())
             answer = json.dumps({'summary': goal['summary'], 'priorities': goal['priorities']})

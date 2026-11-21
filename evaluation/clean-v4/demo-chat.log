@@ -1,0 +1,6 @@
+SIMULATED MODEL: FitPilot API, tools, and Postgres are exercised.
+User: What goal did I save?
+FitPilot: Your saved goal is: Train for a walking holiday.
+User: How many minutes did I set for each session?
+FitPilot: You set 20 minutes per session.
+PASS: get_profile succeeded; 4 chat messages restored after login; 3 model requests recorded.

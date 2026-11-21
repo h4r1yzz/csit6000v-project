@@ -1,0 +1,145 @@
+{
+  "model": "qwen3.8-27b",
+  "cases": [
+    {
+      "case": "missing-session",
+      "input": null,
+      "passed": true,
+      "http": 200,
+      "result": {
+        "summary": "No specific exercise session or user question was provided for review. Based on your profile as a beginner aiming to build strength and energy with 4 days/week of 35-minute sessions using bodyweight and dumbbells, here is a general overview of how to structure your training using the available catalog.",
+        "observations": [
+          "Your goal is to build strength and feel more energetic, which aligns well with a mix of compound movements and moderate cardio.",
+          "You have access to bodyweight and dumbbells, which covers all the equipment requirements for the beginner exercises in the catalog.",
+          "Your session length is 35 minutes, which is sufficient for a focused beginner workout including warm-up, main lifts, and cool-down.",
+          "You have no stated limitations or allergies, allowing for a broad selection of exercises and high-protein meals."
+        ],
+        "suggestions": [
+          "For a 35-minute session, consider a structure like: 5 minutes of Arm circles (Mobility) for warm-up, 20 minutes of strength work (e.g., Squat, Incline push-up, Bicep curl, Glute bridge), and 10 minutes of Walking (Cardio) or Dead bug (Core) for cool-down.",
+          "Focus on form over weight, especially for Squats and Incline push-ups, as you are a beginner.",
+          "To support your high-protein dietary preference and $70 weekly budget, consider meals like the Chicken rice power bowl ($4.80, 42g protein) or Greek yogurt berry bowl ($3.20, 28g protein) which fit well within your budget.",
+          "Since you train 4 days a week, ensure you include at least one rest day between lower body sessions to allow for recovery."
+        ],
+        "confidence_note": "No measurements available.",
+        "metrics": {}
+      },
+      "model_calls": 1,
+      "usage_by_call": [
+        {
+          "prompt_tokens": 1430,
+          "total_tokens": 1922,
+          "completion_tokens": 492,
+          "prompt_tokens_details": null
+        }
+      ],
+      "elapsed_seconds": 9.24
+    },
+    {
+      "case": "low-visibility",
+      "input": {
+        "exercise": "Squat",
+        "reps": 4,
+        "average_confidence": 0.43,
+        "analyzed_frames": 145,
+        "range_of_motion": {
+          "min": 79,
+          "max": 171
+        },
+        "duration_seconds": 15,
+        "source": "upload",
+        "form_cues": []
+      },
+      "passed": true,
+      "http": 200,
+      "result": {
+        "summary": "The squat session shows a moderate range of motion and low average confidence, suggesting the form may need refinement. As a beginner aiming to build strength, focusing on proper squat mechanics is key to preventing injury and maximizing gains.",
+        "observations": [
+          "The average confidence score of 0.43 is relatively low, which may indicate inconsistent form or difficulty in tracking the movement.",
+          "The range of motion (79.0 to 171.0 degrees) suggests a partial squat rather than a full depth, which is common for beginners but should be gradually improved.",
+          "Only 4 reps were completed in 15 seconds, which is a reasonable pace for a beginner but could be increased as strength improves."
+        ],
+        "suggestions": [
+          "Focus on sitting your hips back and keeping your knees tracking over your toes to improve squat depth and stability.",
+          "Consider adding a Glute bridge to your routine to strengthen the posterior chain, which will support better squat form.",
+          "Incorporate a Bicep curl or Incline push-up on upper body days to balance your training and support overall strength goals.",
+          "Pair your workouts with high-protein meals like the Chicken rice power bowl or Greek yogurt berry bowl to support muscle recovery and energy levels."
+        ],
+        "confidence_note": "Low visibility: these measurements are unreliable. Reposition the camera before using the feedback.",
+        "metrics": {
+          "reps": 4,
+          "duration_seconds": 15.0,
+          "average_confidence": 0.43,
+          "range_of_motion": {
+            "min": 79.0,
+            "max": 171.0
+          },
+          "analyzed_frames": 145
+        }
+      },
+      "model_calls": 1,
+      "usage_by_call": [
+        {
+          "prompt_tokens": 1567,
+          "total_tokens": 1897,
+          "completion_tokens": 330,
+          "prompt_tokens_details": null
+        }
+      ],
+      "elapsed_seconds": 6.732
+    },
+    {
+      "case": "clear-view",
+      "input": {
+        "exercise": "Squat",
+        "reps": 4,
+        "average_confidence": 0.91,
+        "analyzed_frames": 145,
+        "range_of_motion": {
+          "min": 79,
+          "max": 171
+        },
+        "duration_seconds": 15,
+        "source": "upload",
+        "form_cues": []
+      },
+      "passed": true,
+      "http": 200,
+      "result": {
+        "summary": "The user performed 4 Squats with an average confidence of 0.91. The range of motion indicates a deep squat (171\u00b0), which is excellent for a beginner. No specific form cues were flagged, suggesting a generally stable movement pattern.",
+        "observations": [
+          "The user achieved a maximum knee angle of 171\u00b0, indicating a deep squat depth.",
+          "The minimum knee angle was 79\u00b0, suggesting a controlled return to the standing position.",
+          "The average confidence score of 0.91 indicates high reliability in the pose estimation.",
+          "The session duration was 15 seconds for 4 reps, averaging approximately 3.75 seconds per rep."
+        ],
+        "suggestions": [
+          "Maintain the current depth as it aligns well with the 'Sit hips back' instruction for Squats.",
+          "Focus on keeping the knees tracking over the toes during the descent to ensure proper alignment.",
+          "Consider adding a Glute bridge to the routine to complement the lower body strength work.",
+          "Ensure a high-protein meal, such as the Chicken rice power bowl, is consumed within 2 hours post-workout to support recovery."
+        ],
+        "confidence_note": "High confidence in the rep count and range of motion due to the 0.91 average confidence score and consistent landmark tracking.",
+        "metrics": {
+          "reps": 4,
+          "duration_seconds": 15.0,
+          "average_confidence": 0.91,
+          "range_of_motion": {
+            "min": 79.0,
+            "max": 171.0
+          },
+          "analyzed_frames": 145
+        }
+      },
+      "model_calls": 1,
+      "usage_by_call": [
+        {
+          "prompt_tokens": 1567,
+          "total_tokens": 1940,
+          "completion_tokens": 373,
+          "prompt_tokens_details": null
+        }
+      ],
+      "elapsed_seconds": 7.479
+    }
+  ]
+}

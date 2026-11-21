@@ -1,0 +1,63 @@
+{
+  "source_commit": "ca94084617e3458ce639b7074debfe9029af3eb9",
+  "model": "qwen3.8-27b",
+  "transport": "TACC via SSH",
+  "runs": [
+    {
+      "name": "live-smoke",
+      "args": [
+        "scripts/smoke.py",
+        "--live"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "planning-confirmation",
+      "args": [
+        "scripts/evaluate.py",
+        "--suite",
+        "planning",
+        "--case-ids",
+        "P02",
+        "P04",
+        "P19",
+        "--repeats",
+        "3",
+        "--workers",
+        "4",
+        "--output",
+        "planning-confirmation.json"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "adaptation-confirmation",
+      "args": [
+        "scripts/evaluate.py",
+        "--suite",
+        "adaptation",
+        "--case-ids",
+        "A04",
+        "A05",
+        "A09",
+        "--repeats",
+        "3",
+        "--workers",
+        "4",
+        "--output",
+        "adaptation-confirmation.json"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "live-feedback",
+      "args": [
+        "scripts/evaluate_feedback.py",
+        "--output",
+        "live-feedback.json"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "working_tree_modified": false
+}

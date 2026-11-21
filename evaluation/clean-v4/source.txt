@@ -1,0 +1,14 @@
+Commit ca94084617e3458ce639b7074debfe9029af3eb9
+Tracked source status before run
+Python 3.11.18
+v26.8.2
+12.0.2
+postgres (PostgreSQL) 17.12 (Homebrew)
+4cc42d659403f0ab5f79485a02da2f1d9abaedd61f3767b78c7bac33bae5afa9  scripts/evaluate.py
+fc8e70631eba523bdf595078e8ec529aa3660dac951042f4d9c840563c73d391  scripts/verify.py
+088ac471a2a27dbf1a5cb003150c932a1218eed5511eec11b07c46f1a27316a8  scripts/smoke.py
+969c4bfac5ad43aaa2b75fe993a564c4c81e2b49dd094ba71986b2d8ea35780f  evaluation/planning_cases.json
+ee69e912198768ebf813aa993252a48b183c9fbfedc2581de5ccce718c117a6b  evaluation/adaptation_cases.json
+e50e245f7425938935bf35315b68a039a6100b215749a8309563b96082bfcb1b  backend/requirements-dev.txt
+b34caa1a748fba45f5dbcd7bbc84bd7d83ee4e4d6aab45db3d71e1feb4afa37e  frontend/package-lock.json
+Working tree clean after local verification

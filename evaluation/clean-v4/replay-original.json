@@ -1,0 +1,25 @@
+{
+  "source_commit": "ca94084617e3458ce639b7074debfe9029af3eb9",
+  "working_tree_modified": false,
+  "mode": "recorded model transport; no live inference or latency measurement",
+  "suites": {
+    "planning": {
+      "records": 180,
+      "method_counts": {
+        "multi_agent": 60,
+        "single_call": 60,
+        "single_agent": 60
+      },
+      "differences": []
+    },
+    "adaptation": {
+      "records": 90,
+      "method_counts": {
+        "single_agent": 30,
+        "multi_agent": 30,
+        "single_call": 30
+      },
+      "differences": []
+    }
+  }
+}

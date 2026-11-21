@@ -1,0 +1,2 @@
+PASS: account -> five live model stages -> valid draft -> approval -> persisted active plan
+Live model: qwen3.8-27b (tacc_qwen); all seven constraints passed.

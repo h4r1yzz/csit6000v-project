@@ -1,0 +1,25 @@
+✔ joint geometry handles right angles and rejects collapsed joints (3.020125ms)
+✔ squat requires full extension, flexion, extension and counts once (2.390042ms)
+✔ starting in flexion does not count a partial rep (0.694917ms)
+✔ small knee movement and low visibility cannot count repetitions (1.986208ms)
+✔ chooses visible right side and counts curls (0.982208ms)
+✔ visibility loss and a seek gap reset an incomplete repetition (2.02375ms)
+✔ arm circles count a complete rotation, not forward-back wobbling (2.115541ms)
+✔ landmark snapshots are numerical, bounded and sampled at least a second apart (2.478792ms)
+✔ invalid numerical landmark snapshots are omitted without inventing coordinates (0.123792ms)
+✔ alternating and simultaneous curls preserve independent arm totals (1.239292ms)
+✔ squats require agreement and abandon partial cycles on visible limb change (0.884ms)
+✔ calibration excludes practice reps and persists accepted thresholds (1.177542ms)
+✔ calibration rejects tiny range and cancellation preserves completed reps (0.630708ms)
+✔ time-based counters tolerate short gaps but reject long occlusions and spikes (0.415041ms)
+✔ curl counts an 80-degree bend using prototype thresholds (0.23625ms)
+✔ curl uses aspect-corrected image angles even when inferred world depth disagrees (0.859083ms)
+✔ curl instructions expose each phase and missing joints (0.3305ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 17
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 141.589667

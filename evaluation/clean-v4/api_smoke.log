@@ -1,0 +1,2 @@
+PASS: account -> five simulated model stages -> valid draft -> approval -> persisted active plan
+SIMULATED MODEL: this checks application integration, not live inference or recommendation quality.

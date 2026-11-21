@@ -21,7 +21,7 @@ Put private values in `backend/.env`. Start with `python3 scripts/dev.py`, or ru
 
 Model base URLs must use HTTP or HTTPS and cannot contain embedded credentials, query strings, or fragments. The client appends `/chat/completions`; supply the provider's API base rather than its completions URL. Neither API keys nor model service URLs are needed in the React bundle.
 
-Each specialist makes one bounded model request. If that response fails deterministic constraint checks, the coordinator allows one targeted revision for that specialist before local fallback. Transport failures do not revise: the first service failure opens a workflow circuit that skips later network calls, and later stages complete locally. Malformed JSON or schema-invalid responses fall back for that stage without a revision loop. Workflow results include `clarification` notes when preferences are too broad or catalogs cannot satisfy diet, equipment, or budget constraints. Results retain source and fallback details. The explicit connection probe has an eight-second timeout.
+Each specialist requires a configured model. A deterministic constraint failure allows one targeted revision. Unavailable services, malformed outputs or exhausted revisions fail the request (HTTP 503); no local agent answer replaces the failure. Workflow results can include clarification notes for broad or infeasible preferences. The connection probe uses an eight-second timeout.
 
 ## Routes
 
@@ -92,7 +92,7 @@ Update with a complete preference object:
 Supported IDs: `goal_planning`, `exercise_planning`, `nutrition`, `exercise_feedback`, `evaluation_adaptation`.
 
 ```bash
-curl -X POST http://127.0.0.1:8000/api/agents/goal_planning/run \
+curl -b cookies.txt -X POST http://127.0.0.1:8000/api/agents/goal_planning/run \
   -H 'Content-Type: application/json' \
   -d '{"message":"Focus on a routine I can maintain."}'
 ```
@@ -104,7 +104,7 @@ Agent request fields:
 | `message` | string, up to 1,200 characters | Optional user question or request. |
 | `pose_session_id` | positive integer | Optional saved movement summary for exercise feedback. |
 
-An agent run contains `id`, `agent_id`, `status`, `source`, `output`, `created_at`, and optional `workflow_id`/`error`. `output` is agent-specific structured JSON. A fallback reason may be present even when the local execution succeeds. Inspect `source` rather than assuming that a configured service generated the result.
+An agent run contains `id`, `agent_id`, `status`, `source`, `output`, `created_at`, and optional `workflow_id`/`error`. `output` is agent-specific structured JSON. Failed runs retain an error and no successful generated output. Inspect `source` rather than assuming that a configured service generated the result.
 
 ## Coordinated draft and approval
 
@@ -127,7 +127,7 @@ A draft includes:
     "estimated_weekly_cost": 0,
     "budget_currency": "USD"
   },
-  "source": "local_fallback",
+  "source": "llm",
   "requires_approval": true,
   "workflow_id": 1,
   "steps": [],
@@ -137,7 +137,7 @@ A draft includes:
 
 This abbreviated illustration omits the actual nonempty workouts and agent steps. Each workout has `day`, `focus`, `duration_minutes`, and `exercises`; each exercise has `name`, `sets`, `reps`, and `rest_seconds`. Each meal has `name`, `why`, `cost`, `calories`, `protein_g`, `servings_per_week`, and `ingredients`. `cost` is per serving and `estimated_weekly_cost` totals exactly 21 servings for the week. Local menus use up to three compatible catalog recipes and can repeat the cheapest option to fit the budget. A menu that cannot meet the budget or dietary constraints is marked invalid and cannot be approved. These sample menu estimates are not a complete nutritional prescription.
 
-After reviewing a returned draft, POST its `title`, `content`, `source`, and `workflow_id` to `/api/plans`. A generated draft may have `validation.valid = false` when the catalog/budget cannot satisfy a request. Generation still returns the draft for inspection, but approval returns HTTP 422. A failed validation leaves the active plan unchanged. Save-time validation uses the current profile, so changing preferences after generation can invalidate a draft. When a workflow ID is supplied, the submitted content must exactly match its recorded completed draft. Run history is available independently of active plans. Workflow execution is synchronous within the request; stored states are an audit trail, not a durable background queue. A process termination during execution can leave a run marked `running`.
+After reviewing a returned draft, POST its `title`, `content`, `source`, and `workflow_id` to `/api/plans`. An unsatisfiable catalog/budget request can fail generation with HTTP 503. Any returned draft with `validation.valid = false` cannot be approved; approval returns HTTP 422. A failed validation leaves the active plan unchanged. Save-time validation uses the current profile, so changing preferences after generation can invalidate a draft. When a workflow ID is supplied, the submitted content must exactly match its recorded completed draft. Run history is available independently of active plans. Workflow execution is synchronous within the request; stored states are an audit trail, not a durable background queue. A process termination during execution can leave a run marked `running`.
 
 ## Workout journal
 
@@ -160,7 +160,7 @@ curl -X POST http://127.0.0.1:8000/api/pose-sessions \
 The response includes the saved session `id`. Request interpretation with:
 
 ```bash
-curl -X POST http://127.0.0.1:8000/api/agents/exercise_feedback/run \
+curl -b cookies.txt -X POST http://127.0.0.1:8000/api/agents/exercise_feedback/run \
   -H 'Content-Type: application/json' \
   -d '{"pose_session_id":1,"message":"Review my movement summary."}'
 ```
@@ -181,4 +181,4 @@ curl -X POST http://127.0.0.1:8000/api/assistant/chat \
 
 ## Errors
 
-Invalid typed request bodies return HTTP 422 with structured validation details. Unknown records or agent IDs return HTTP 404. A model outage is represented by local fallback where supported; an HTTP success alone does not prove live model inference. If hard constraints cannot be satisfied, inspect the returned workflow validation/failure details before changing preferences or catalog data.
+Invalid typed request bodies return HTTP 422 with structured validation details. Unknown records or agent IDs return HTTP 404. A missing or unavailable model, malformed model output or exhausted constraint revision returns HTTP 503; the application does not substitute a local agent answer. If hard constraints cannot be satisfied, inspect the returned workflow validation/failure details before changing preferences or catalog data.

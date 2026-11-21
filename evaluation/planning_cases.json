@@ -1,0 +1,145 @@
+[
+  {
+    "id": "P01",
+    "profile": {},
+    "expected": "valid_plan"
+  },
+  {
+    "id": "P02",
+    "profile": {
+      "weekly_days": 2,
+      "scheduled_days": [
+        "Tuesday",
+        "Saturday"
+      ]
+    },
+    "expected": "valid_plan"
+  },
+  {
+    "id": "P03",
+    "profile": {
+      "weekly_days": 5
+    },
+    "expected": "valid_plan"
+  },
+  {
+    "id": "P04",
+    "profile": {
+      "minutes_per_session": 10
+    },
+    "expected": "valid_plan"
+  },
+  {
+    "id": "P05",
+    "profile": {
+      "minutes_per_session": 60
+    },
+    "expected": "valid_plan"
+  },
+  {
+    "id": "P06",
+    "profile": {
+      "equipment": "bodyweight"
+    },
+    "expected": "valid_plan"
+  },
+  {
+    "id": "P07",
+    "profile": {
+      "equipment": "bodyweight, dumbbells"
+    },
+    "expected": "valid_plan"
+  },
+  {
+    "id": "P08",
+    "profile": {
+      "experience": "intermediate"
+    },
+    "expected": "valid_plan"
+  },
+  {
+    "id": "P09",
+    "profile": {
+      "experience": "advanced"
+    },
+    "expected": "valid_plan"
+  },
+  {
+    "id": "P10",
+    "profile": {
+      "dietary_preferences": "vegan"
+    },
+    "expected": "valid_plan"
+  },
+  {
+    "id": "P11",
+    "profile": {
+      "dietary_preferences": "vegetarian"
+    },
+    "expected": "valid_plan"
+  },
+  {
+    "id": "P12",
+    "profile": {
+      "dietary_preferences": "pescatarian"
+    },
+    "expected": "valid_plan"
+  },
+  {
+    "id": "P13",
+    "profile": {
+      "dietary_preferences": "gluten free"
+    },
+    "expected": "valid_plan"
+  },
+  {
+    "id": "P14",
+    "profile": {
+      "food_allergies": "peanuts"
+    },
+    "expected": "valid_plan"
+  },
+  {
+    "id": "P15",
+    "profile": {
+      "food_allergies": "soy"
+    },
+    "expected": "valid_plan"
+  },
+  {
+    "id": "P16",
+    "profile": {
+      "weekly_budget": 100
+    },
+    "expected": "valid_plan"
+  },
+  {
+    "id": "P17",
+    "profile": {
+      "weekly_budget": 700,
+      "budget_currency": "HKD"
+    },
+    "expected": "valid_plan"
+  },
+  {
+    "id": "P18",
+    "profile": {
+      "limitations": "knee discomfort"
+    },
+    "expected": "valid_plan"
+  },
+  {
+    "id": "P19",
+    "profile": {
+      "weekly_budget": 0
+    },
+    "expected": "reject"
+  },
+  {
+    "id": "P20",
+    "profile": {
+      "dietary_preferences": "halal"
+    },
+    "expected": "reject"
+  }
+]

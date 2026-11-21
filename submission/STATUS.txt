@@ -1,0 +1,25 @@
+DRAFT - NOT READY FOR FINAL SUBMISSION
+
+Completed locally:
+- Required two-section README structure and model-required setup corrections.
+- Passing build, backend tests, pose tests and simulated end-to-end example.
+- Auditable verification logs and results consolidated in README.
+- 20 synthetic planning cases, 10 adaptation cases and a live baseline runner.
+
+Still required from group:
+- Truthful per-member contributions in contributions.json (currently blank).
+- Execute live evaluations. Supply labeled clips if reporting real-video accuracy; 15 was the proposal target, not a count mandated by the submission announcement.
+- Human quality/adaptation scoring and provider token counts if claimed.
+- Final report with claims, figures/tables mapped to commands/data.
+- Confirm teaching-team access to model prerequisites and evaluation materials.
+- Commit/push the reviewed preparation changes and result files to GitHub.
+- Regenerate and review the single final PDF after README and contributions are final.
+
+No live evaluation numbers or member contributions have been invented.
+
+Regenerate PDF (from repository root):
+  backend/.venv/bin/python -m pip install -r submission/requirements.txt
+  backend/.venv/bin/python scripts/build_submission.py
+After completing the checklist and contributions, use:
+  backend/.venv/bin/python scripts/build_submission.py --final
+The builder verifies that all README text and the clickable GitHub URL survive PDF extraction.

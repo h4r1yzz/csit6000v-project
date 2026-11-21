@@ -108,10 +108,10 @@ def _send_chat(cfg: dict, payload: dict, timeout: float) -> dict[str, Any]:
         content = message.get('content')
         tool_calls = message.get('tool_calls') or []
         if tool_calls:
-            return {'role': 'assistant', 'content': content, 'tool_calls': tool_calls, 'source': cfg['source']}
+            return {'role': 'assistant', 'content': content, 'tool_calls': tool_calls, 'source': cfg['source'], 'usage': data.get('usage')}
         if not isinstance(content, str) or not content.strip():
             raise ModelUnavailable('The model returned an empty answer')
-        return {'role': 'assistant', 'content': content.strip(), 'source': cfg['source']}
+        return {'role': 'assistant', 'content': content.strip(), 'source': cfg['source'], 'usage': data.get('usage')}
     except (HTTPError, HTTPException, URLError, TimeoutError, OSError, ValueError, KeyError, IndexError, TypeError) as exc:
         raise ModelUnavailable('The configured model could not complete the request') from exc
 

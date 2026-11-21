@@ -1,0 +1,56 @@
+{
+  "timestamp_utc": "2026-11-21T03:47:32.413181+00:00",
+  "python": "3.12.2",
+  "platform": "macOS-15.6.1-arm64-arm-64bit",
+  "scope": "SQLite and simulated-model integration; no live model, real video or Postgres claims",
+  "base_commit": "b3a02f4882ca6a06af1620c8f419f4641c9b24f6",
+  "working_tree_modified": true,
+  "checks": [
+    {
+      "name": "frontend_build",
+      "command": [
+        "npm",
+        "run",
+        "build",
+        "--prefix",
+        "frontend"
+      ],
+      "exit_code": 0,
+      "log": "frontend_build.log"
+    },
+    {
+      "name": "backend_tests",
+      "command": [
+        "/Users/harry/AdvancedAiCsit6000V/csit6000v-project/backend/.venv/bin/python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-v"
+      ],
+      "exit_code": 0,
+      "log": "backend_tests.log"
+    },
+    {
+      "name": "pose_tests",
+      "command": [
+        "node",
+        "--test",
+        "frontend/src/pose/analysis.test.mjs"
+      ],
+      "exit_code": 0,
+      "log": "pose_tests.log"
+    },
+    {
+      "name": "api_smoke",
+      "command": [
+        "/Users/harry/AdvancedAiCsit6000V/csit6000v-project/backend/.venv/bin/python",
+        "scripts/smoke.py"
+      ],
+      "exit_code": 0,
+      "log": "api_smoke.log"
+    }
+  ],
+  "passed": true
+}

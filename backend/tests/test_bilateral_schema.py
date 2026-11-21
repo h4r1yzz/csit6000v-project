@@ -1,3 +1,4 @@
+import json
 import unittest
 from pydantic import ValidationError
 from app.schemas import PoseSession
@@ -33,17 +34,25 @@ class BilateralSchemaTests(unittest.TestCase):
         from pathlib import Path
         from unittest.mock import patch
         from fastapi.testclient import TestClient
-        from app import db
+        from app import agents, db
         from app.main import app
         with tempfile.TemporaryDirectory() as folder, patch.object(db, 'DB_PATH', Path(folder) / 'test.db'), patch.dict('os.environ', {'LLM_BASE_URL': '', 'QWEN_BASE_URL': ''}), TestClient(app) as client:
-            client.post('/api/auth/register', json={
+            registered = client.post('/api/auth/register', json={
                 'name': 'Demo', 'email': 'person@example.test', 'password': 'example-password-123',
-            }).raise_for_status()
+            })
+            registered.raise_for_status()
             saved = client.post('/api/pose-sessions', json=self.payload())
             self.assertEqual(saved.status_code, 200, saved.text)
             restored = client.get('/api/pose-sessions').json()[0]
             self.assertEqual(restored['counts_by_side'], {'left': 1, 'right': 2})
-            reply = client.post('/api/agents/exercise_feedback/run', json={'pose_session_id': saved.json()['id']})
+            pose_id = saved.json()['id']
+            # Keep the persisted-pose integration assertion; mock only the model transport.
+            with db.account_scope(registered.json()['id']):
+                answer = agents.fallback('exercise_feedback', agents.context(pose_id))
+            with patch.dict('os.environ', {'LLM_BASE_URL': 'http://model.test/v1'}), patch(
+                'app.tacc._send_chat', return_value={'content': json.dumps(answer), 'source': 'llm'},
+            ):
+                reply = client.post('/api/agents/exercise_feedback/run', json={'pose_session_id': pose_id})
             self.assertEqual(reply.status_code, 200, reply.text)
             observations = ' '.join(reply.json()['output']['observations'])
             self.assertIn('Left arm: 1; right arm: 2', observations)

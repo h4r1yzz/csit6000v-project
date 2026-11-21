@@ -1,0 +1,86 @@
+[
+  {
+    "id": "A01",
+    "before": {},
+    "after": {
+      "equipment": "bodyweight"
+    },
+    "expected": "valid_plan"
+  },
+  {
+    "id": "A02",
+    "before": {},
+    "after": {
+      "weekly_budget": 100
+    },
+    "expected": "valid_plan"
+  },
+  {
+    "id": "A03",
+    "before": {},
+    "after": {
+      "minutes_per_session": 15
+    },
+    "expected": "valid_plan"
+  },
+  {
+    "id": "A04",
+    "before": {},
+    "after": {
+      "weekly_days": 2,
+      "scheduled_days": [
+        "Tuesday",
+        "Saturday"
+      ]
+    },
+    "expected": "valid_plan"
+  },
+  {
+    "id": "A05",
+    "before": {},
+    "after": {
+      "dietary_preferences": "vegan"
+    },
+    "expected": "valid_plan"
+  },
+  {
+    "id": "A06",
+    "before": {},
+    "after": {
+      "food_allergies": "peanuts"
+    },
+    "expected": "valid_plan"
+  },
+  {
+    "id": "A07",
+    "before": {},
+    "after": {
+      "limitations": "knee discomfort"
+    },
+    "expected": "valid_plan"
+  },
+  {
+    "id": "A08",
+    "before": {},
+    "after": {
+      "dietary_preferences": "vegetarian"
+    },
+    "expected": "valid_plan"
+  },
+  {
+    "id": "A09",
+    "before": {},
+    "after": {
+      "weekly_budget": 0
+    },
+    "expected": "reject"
+  },
+  {
+    "id": "A10",
+    "before": {},
+    "after": {
+      "dietary_preferences": "halal"
+    },
+    "expected": "reject"
+  }
+]

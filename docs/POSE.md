@@ -44,7 +44,7 @@ The tracker suggests a side view for squats/curls and a frontal view for circles
 
 Saving the summary and creating a workout are separate requests. If the workout request fails after summary creation, the UI retains the summary ID and offers **Retry workout log**, avoiding another pose-summary record. A lost response after a successful server write can still create a duplicate on retry because the API does not implement request idempotency keys.
 
-A saved session is frozen until a new session is started. Feedback results identify whether they came from local rules or live inference. The LLM receives structured measurements, bounded numerical landmark snapshots, and relevant profile/context. It does not see the recorded clip.
+A saved session is frozen until a new session is started. Feedback requires live inference and fails visibly when the model is unavailable. The LLM receives structured measurements, bounded numerical landmark snapshots, and relevant profile/context. It does not see the recorded clip.
 
 ## Summary fields
 
@@ -72,7 +72,7 @@ Pure analysis tests cover geometry, both sides, complete squat/curl cycles, inco
 node --test frontend/src/pose/analysis.test.mjs
 ```
 
-The app itself builds with Node.js 20+, but these tests use Node's newer built-in TypeScript loading. Real webcam permission, GPU/CPU model loading, skeleton alignment, clip decoding, and accuracy on representative people still need browser/device validation. Use the manual checklist in [QA.md](QA.md).
+The app itself builds with Node.js 20+, but these tests use Node's newer built-in TypeScript loading. Real webcam permission, GPU/CPU model loading, skeleton alignment, clip decoding, and accuracy on representative people still need browser/device validation. Use the manual checklist in [the README manual checklist](../README.md#manual-verification).
 
 Official API references: [Pose Landmarker for web](https://developers.google.com/edge/mediapipe/solutions/vision/pose_landmarker/web_js), [PoseLandmarker JavaScript API](https://developers.google.com/edge/api/mediapipe/js/tasks-vision.poselandmarker).
 

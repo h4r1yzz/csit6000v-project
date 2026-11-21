@@ -56,7 +56,7 @@ cd "$FITPILOT_TACC_RUN/course-sample/qwen27b-student-release"
 bash setup-sdk-account.sh
 ```
 
-Set `FITPILOT_COURSE_ZIP` to the actual absolute download path if the archive is elsewhere. The extracted `README.md` and `STUDENT-COMMANDS.md` cover course account setup and troubleshooting. The setup script registers the course `proxy` environment. FitPilot's jobs use that environment and then activate the public Project runtime. You can check registration with `tcloud env ls -n proxy`. If the SDK reports `EnvironmentLocationNotFound`, run the setup script before submitting a job.
+Set `FITPILOT_COURSE_ZIP` to the actual absolute download path if the archive is elsewhere. The extracted `README.md` and `STUDENT-COMMANDS.md` cover course account setup and troubleshooting. The setup script registers the course `proxy` environment. An existing private empty `proxy` also works with the service launcher: the course activation script explicitly selects the public Python/vLLM runtime. If the setup script refuses an existing private environment, retain it and submit the service directly; do not delete an environment used by other work. FitPilot's jobs use that environment and then activate the public Project runtime. You can check registration with `tcloud env ls -n proxy`. If the SDK reports `EnvironmentLocationNotFound`, run the setup script before submitting a job.
 
 ## 3. Submit the GPU service
 
@@ -88,7 +88,7 @@ cd "$FITPILOT_ROOT"
 python3 scripts/dev.py --tacc-job "$SERVICE_JOB_ID"
 ```
 
-If the SDK is outside `PATH`, add `--tcloud /absolute/path/to/tcloud`. If port `18000` is occupied, select a free port with `--tacc-port`. Ctrl+C stops the local app and closes the SSH connection. Use step 5 to stop the GPU job. When the GPU job ends, the dashboard stays available and agents fall back to local rules.
+If the SDK is outside `PATH`, add `--tcloud /absolute/path/to/tcloud`. If port `18000` is occupied, select a free port with `--tacc-port`. Ctrl+C stops the local app and closes the SSH connection. Use step 5 to stop the GPU job. When the GPU job ends, the dashboard stays available but model-dependent requests fail until a new reachable service is configured.
 
 The launcher requires an existing SDK account with one SSH gateway, a key available for noninteractive authentication, and a verified gateway host key. If the gateway rejects forwarding, ask course staff for a reachable endpoint or supported network route. [TACC access FAQ](https://github.com/turingaicloud/quickstart/blob/master/FAQ.md#4-can-i-ssh-to-the-tcloud-server)
 
@@ -111,7 +111,7 @@ With either connection, check reachability from FastAPI.
 curl -fsS http://127.0.0.1:8000/api/model/status
 ```
 
-Check `reachable` in the response. When it is `true`, open the dashboard and run an agent. Inspect the source shown on its result. FitPilot sends model prompts with relevant context, including saved pose measurements for exercise feedback. The video frames, pose inference, and SQLite database stay local. Model and WASM assets download when the browser first loads the pose tracker.
+Check `reachable` in the response. When it is `true`, open the dashboard and run an agent. Inspect the source shown on its result. FitPilot sends model prompts with relevant context, including saved pose measurements for exercise feedback. The video frames, pose inference, and SQLite database stay local. The model is bundled locally and the build copies WASM assets from the installed MediaPipe package.
 
 ## Optional validation inside TACC
 
@@ -184,5 +184,5 @@ Start a new service and update your private connection settings for the new endp
 | Service exits with `Address already in use` | The assigned node already has a listener on port 8000. Resubmit the service on a different node. A temporary copy of the job can use Slurm's `exclude=NODE_NAME` setting in `job.general`. Use the failed job's node name from the scheduler. |
 | CUDA out of memory during worker initialization | Check the service log. If it fails on an assigned node before loading weights, try a different node or share the log with the teaching assistant. |
 | Invalid or expired service address | The current service log after startup, including its `/v1` suffix. |
-| Timeout or fallback source | Check that the service job is still alive and that the CPU job used its current address. Inspect the downloaded result for per-agent errors. |
+| Timeout or failed model run | Check that the service job is still alive and that the CPU job used its current address. Inspect the downloaded result for per-agent errors. |
 | JSON result missing | Check the CPU log and client job ID. The job logs bootstrap errors before workflow execution. |

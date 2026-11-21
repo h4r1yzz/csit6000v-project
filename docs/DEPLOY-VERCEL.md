@@ -28,7 +28,7 @@ The script reads `.env.local`, uses the direct URL, and copies the source read-o
 2. Root directory: repository root (not `frontend`). Framework: FastAPI.
 3. Keep the build command from `vercel.json`. It builds Vite and copies the complete output into root `public/` for CDN serving, including the pose model and matching WASM files.
 4. Add both database URLs above. Leave `VITE_API_URL` unset: the frontend calls `/api` on the same domain.
-5. Optional: add `LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY`, and `LLM_TIMEOUT_SECONDS` if using a reachable model endpoint. Without one, coaching uses the existing labeled local rules. A localhost model URL on your computer is not reachable from Vercel.
+5. For planning and coaching, add `LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY` (if required), and `LLM_TIMEOUT_SECONDS` for a reachable model endpoint. Without one, model-dependent requests return HTTP 503. A localhost model URL on your computer is not reachable from Vercel.
 6. Deploy. Open `/api/health` and confirm `database: connected`.
 
 Apply `database/auth.sql` to provision the central account registry on an existing Neon deployment. The app role needs permission to create schemas for newly registered accounts. The existing SQLite import handles the standalone demo workspace. Browser accounts use separate Postgres schemas.

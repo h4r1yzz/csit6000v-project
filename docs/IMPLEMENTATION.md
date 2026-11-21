@@ -1,6 +1,6 @@
 # FitPilot implementation
 
-FitPilot is a local web application for the CSIT6000V project. The React frontend handles the dashboard, preferences, plan review, movement journal, agent workspace, and MediaPipe pose tracking. FastAPI coordinates specialized planning agents and stores user context in SQLite. A live OpenAI-compatible model is optional: deterministic local agents provide labeled fallback results when no model is connected or a model response is unusable.
+FitPilot is a local web application for the CSIT6000V project. The React frontend handles the dashboard, preferences, plan review, movement journal, agent workspace, and MediaPipe pose tracking. FastAPI coordinates specialized planning agents and stores user context in SQLite. A live OpenAI-compatible model is required for planning, specialists and coach chat. Deterministic helpers validate and normalize outputs; they do not substitute successful agent responses after model failure.
 
 ## Architecture
 
@@ -24,10 +24,10 @@ flowchart TD
     MediaPipe --> Metrics[Angles, reps, confidence, form cues]
     Metrics --> Feedback
     API <--> DB[(SQLite)]
-    Coordinator -. optional requests .-> LLM[OpenAI-compatible LLM / TACC Qwen]
+    Coordinator -. model requests .-> LLM[OpenAI-compatible LLM / TACC Qwen]
 ```
 
-The coordinator owns workflow order and shared context: clarify impossible or vague preferences, run goal → exercise → nutrition → feedback, validate the assembled draft, then run evaluation/adaptation. Each specialized agent has its own request, structured result, provenance, and persisted execution record. If a specialist response fails deterministic checks, the coordinator allows one targeted revision for that stage before local fallback. The evaluation stage checks the combined result against stored preferences before the user can activate a plan.
+The coordinator owns workflow order and shared context: clarify impossible or vague preferences, run goal → exercise → nutrition → feedback, validate the assembled draft, then run evaluation/adaptation. Each specialized agent has its own request, structured result, provenance, and persisted execution record. If a specialist response fails deterministic checks, the coordinator allows one targeted revision for that stage before failing the run. The evaluation stage checks the combined result against stored preferences before the user can activate a plan.
 
 Coach chat uses a tool-calling orchestrator (`app/orchestrator.py`) when a model is configured. Shared tools live in `app/tools.py` and are also exposed by `backend/mcp_server.py` over MCP stdio for Cursor or other MCP hosts. Browser pose estimation is a separate computer vision pipeline; it does not ask a language model to inspect video.
 
@@ -73,9 +73,9 @@ Evaluation compares logged sessions against the weekly target, reports average e
 
 The model client supports a generic OpenAI-compatible `/chat/completions` API and the course's TACC Qwen service. The browser calls FastAPI; model credentials stay in the backend environment.
 
-A configured URL is not proof of a reachable model. Health information, agent provenance, and workflow results distinguish configuration from actual inference. Missing connectivity, malformed JSON, or constraint violations are surfaced in run details and can lead to local fallback. Local results must not be presented as model-generated answers.
+A configured URL is not proof of a reachable model. Health information, agent provenance, and workflow results distinguish configuration from actual inference. Missing connectivity, malformed JSON, or constraint violations are surfaced in run details and fail the run. Internal deterministic helper outputs are not live model measurements.
 
-Execution is bounded to the configured specialist stages. Each stage makes one model request, plus at most one constraint-revision request when deterministic checks fail. A per-workflow circuit skips later model calls after a transport failure; malformed JSON or schema-invalid output causes a local fallback for that stage without revision. There are no open-ended agent loops.
+Execution is bounded to the configured specialist stages. Each stage makes one model request, plus at most one constraint-revision request when deterministic checks fail. A per-workflow circuit skips later model calls after a transport failure; malformed JSON or schema-invalid output fails that stage without revision. There are no open-ended agent loops.
 
 The agents are application modules with explicit context passing and persisted execution state. They are not independent background workers or autonomous services. Running a plan workflow performs the stages for that request; it does not create a scheduled task.
 
@@ -85,13 +85,13 @@ The agents are application modules with explicit context passing and persisted e
 - Video frames and uploaded clips stay in browser memory; the API receives derived session summaries when the user saves them.
 - Saved profile details, catalog entries, plans, logs, agent inputs/outputs, and pose summaries are local database records. A pose summary can include up to eight numerical snapshots of 33 `{x,y,z,visibility}` landmarks.
 - When a live LLM is enabled, the backend sends relevant profile and activity context to that configured service. Do not enter sensitive information that should not leave the device.
-- MediaPipe model/WASM assets are fetched from external hosts on first use. Browser inference therefore needs asset connectivity unless those assets have been cached or self-hosted.
+- MediaPipe model assets are bundled; build hooks copy WASM assets from the installed package for local serving.
 - The app offers general fitness and meal suggestions. Pose rules are heuristic measurements, not medical assessment or clinical movement analysis.
 
 ## Extending the implementation
 
-Add a new agent by defining its schema, deterministic fallback, model prompt, and validation behavior in the backend registry, then expose its result in the frontend agent workspace. Include the agent in the coordinator only when the workflow depends on it.
+Add a new agent by defining its schema, normalization helpers, model prompt, and validation behavior in the backend registry, then expose its result in the frontend agent workspace. Include the agent in the coordinator only when the workflow depends on it.
 
 Add a tracked exercise by defining the required landmarks, visibility rules, angle or rotation state machine, feedback cues, and summary values in the browser pose analysis module. Confirm the rep state cannot advance on missing landmarks and that exercise switching resets state.
 
-For hosted multi-user deployment, introduce authentication and user ownership on every data access, deploy the API behind HTTPS, configure exact CORS origins, and replace or adapt SQLite persistence as required. Webcam access outside localhost requires a secure context. No cloud deployment is configured by this local implementation.
+Authentication and account isolation are implemented. Hosted deployment uses HTTPS, exact CORS origins and the PostgreSQL adapter. Webcam access outside localhost requires a secure context. See DEPLOY-VERCEL.md for the Vercel/Neon deployment path.

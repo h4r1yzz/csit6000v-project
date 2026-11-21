@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from app import db
+from app import agents, db
 from app.main import app
 
 
@@ -32,14 +32,21 @@ class AccountIsolationTest(unittest.TestCase):
             profile.update(goal='Train for a walking holiday', minutes_per_session=20)
             ada.put('/api/profile', json=profile).raise_for_status()
             question = 'Plan my walking holiday training'
-            run = ada.post('/api/agents/goal_planning/run', json={'message': question})
+            # Exercise the real prompt logging path with a simulated model transport.
+            with db.account_scope(ada_id):
+                goal = agents.fallback('goal_planning', agents.context())
+            answer = json.dumps({'summary': goal['summary'], 'priorities': goal['priorities']})
+            with patch.dict(os.environ, {'LLM_BASE_URL': 'http://model.test/v1', 'LLM_MODEL': 'test-model'}), patch(
+                'app.tacc._send_chat', return_value={'content': answer, 'source': 'llm'},
+            ):
+                run = ada.post('/api/agents/goal_planning/run', json={'message': question})
             run.raise_for_status()
             self.assertEqual(run.json()['output']['target_minutes'], 20)
             self.assertEqual(sam.get('/api/profile').json()['name'], 'Sam')
             self.assertEqual(sam.get('/api/agent-runs').json(), [])
             with db.account_scope(ada_id):
                 row = db.one('SELECT * FROM model_prompts WHERE agent_run_id=?', (run.json()['id'],))
-                self.assertEqual(row['status'], 'unconfigured')
+                self.assertEqual(row['status'], 'answered')
                 self.assertIn(question, json.loads(row['request_json'])['messages'][-1]['content'])
             with db.account_scope(sam_id):
                 self.assertEqual(db.rows('SELECT id FROM model_prompts'), [])

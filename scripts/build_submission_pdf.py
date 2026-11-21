@@ -1,200 +1,249 @@
-"""Build the course repository-submission PDF from the current README."""
+"""Render the complete repository README and a fillable course submission cover."""
 from __future__ import annotations
 
-import json
 import re
 from html import escape
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER
-from reportlab.lib.pagesizes import letter
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-from reportlab.lib.units import inch
-from reportlab.platypus import (
-    HRFlowable, KeepTogether, PageBreak, Paragraph, Preformatted, SimpleDocTemplate,
-    Spacer, Table, TableStyle,
-)
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle
+from reportlab.pdfbase.pdfmetrics import stringWidth
+from reportlab.platypus import Flowable, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / 'submission' / 'FitPilot-Repository-Submission.pdf'
+OUTPUT = ROOT / 'submission/FitPilot-Repository-Submission.pdf'
 REPO = 'https://github.com/h4r1yzz/csit6000v-project'
-TAG = 'grading-submission-2026-11-21'
+REVISION = 'grading-submission-2026-11-21-v2'
+REVISION_URL = f'{REPO}/tree/{REVISION}'
+MEMBERS = (
+    ('Harry Chandra Tsjan', '21340623'),
+    ('Allabonu Sri Harsha Lakshman', '21344461'),
+    ('Nehanth Kasi Geetha', '21386988'),
+)
+
+INK = colors.HexColor('#172B35')
+MUTED = colors.HexColor('#485A62')
+TEAL = colors.HexColor('#116660')
+RULE = colors.HexColor('#CBD9D8')
+TINT = colors.HexColor('#F1F6F5')
+MARGIN = 48
 
 
-def inline(text: str) -> str:
-    text = escape(text, quote=False)
-    text = re.sub(r'`([^`]+)`', r'<font name="Courier" size="8">\1</font>', text)
-    text = re.sub(r'\*\*([^*]+)\*\*', r'<b>\1</b>', text)
-    text = re.sub(r'(?<!\*)\*([^*]+)\*(?!\*)', r'<i>\1</i>', text)
-    text = re.sub(r'\[([^\]]+)\]\((https?://[^ )]+)\)',
-                  r'<link href="\2" color="#1769aa">\1</link>', text)
-    return text
+def style(name, size, leading, *, font='Helvetica', color=INK, **kwargs):
+    return ParagraphStyle(name, fontName=font, fontSize=size, leading=leading, textColor=color, **kwargs)
 
 
-def parse_readme(text: str, styles: dict) -> list:
-    story: list = []
-    paragraph: list[str] = []
-    code: list[str] | None = None
-    table: list[list[str]] = []
+STYLES = {
+    'eyebrow': style('eyebrow', 9.5, 14, font='Helvetica-Bold', color=TEAL, spaceAfter=12),
+    'cover_title': style('cover_title', 54, 59, font='Times-Bold', spaceAfter=6),
+    'cover_subtitle': style('cover_subtitle', 19, 25, color=MUTED, spaceAfter=24),
+    'title': style('title', 29, 33, font='Times-Bold', keepWithNext=True, spaceAfter=9),
+    'section': style('section', 24, 29, font='Times-Bold', keepWithNext=True, spaceAfter=12),
+    'heading': style('heading', 13, 17, font='Helvetica-Bold', spaceBefore=12,
+                     spaceAfter=5, keepWithNext=True),
+    'body': style('body', 10.5, 14.3, spaceAfter=7),
+    'bullet': style('bullet', 10.5, 14.3, leftIndent=13, bulletIndent=1, spaceAfter=4),
+    'cell': style('cell', 10, 13.5),
+    'table_head': style('table_head', 9.5, 13, font='Helvetica-Bold', color=TEAL),
+}
+TOKEN = re.compile(r'\[((?:`[^`]+`|[^\]])+)\]\(([^)]+)\)|`([^`]+)`|\*\*([^*]+)\*\*')
 
-    def flush_paragraph() -> None:
-        if paragraph:
-            story.append(Paragraph(inline(' '.join(part.strip() for part in paragraph)), styles['BodyText']))
-            story.append(Spacer(1, 5))
-            paragraph.clear()
 
-    def flush_table() -> None:
-        if not table:
-            return
-        body = [[Paragraph(inline(cell.strip()), styles['TableCell']) for cell in row] for row in table]
-        widths = [(7.0 * inch) / len(body[0])] * len(body[0])
-        grid = Table(body, colWidths=widths, repeatRows=1, hAlign='LEFT')
-        grid.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#e9eef5')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#142238')),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('GRID', (0, 0), (-1, -1), .35, colors.HexColor('#cbd3df')),
-            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ('LEFTPADDING', (0, 0), (-1, -1), 5), ('RIGHTPADDING', (0, 0), (-1, -1), 5),
-            ('TOPPADDING', (0, 0), (-1, -1), 4), ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-        ]))
-        story.extend([grid, Spacer(1, 9)])
-        table.clear()
-
-    for raw in text.splitlines():
-        line = raw.rstrip()
-        if line.startswith('```'):
-            flush_paragraph()
-            flush_table()
-            if code is None:
-                code = []
-            else:
-                story.append(Preformatted('\n'.join(code), styles['SubmissionCode']))
-                story.append(Spacer(1, 8))
-                code = None
-            continue
-        if code is not None:
-            code.append(line)
-            continue
-        if line.startswith('|') and line.endswith('|'):
-            flush_paragraph()
-            cells = [cell.strip() for cell in line.strip('|').split('|')]
-            if all(re.fullmatch(r':?-{3,}:?', cell.replace(' ', '')) for cell in cells):
-                continue
-            table.append(cells)
-            continue
-        flush_table()
-        if not line.strip():
-            flush_paragraph()
-            continue
-        heading = re.match(r'^(#{1,3})\s+(.*)', line)
-        if heading:
-            flush_paragraph()
-            level = len(heading.group(1))
-            story.append(Paragraph(inline(heading.group(2)), styles[f'SubmissionHeading{level}']))
-            story.append(Spacer(1, 3))
-        elif re.match(r'^-\s+', line):
-            flush_paragraph()
-            story.append(Paragraph(inline(line[2:].strip()), styles['SubmissionBullet'], bulletText='•'))
-            story.append(Spacer(1, 2))
-        elif re.match(r'^\d+\.\s+', line):
-            flush_paragraph()
-            match = re.match(r'^(\d+)\.\s+(.*)', line)
-            story.append(Paragraph(inline(match.group(2)), styles['SubmissionBullet'], bulletText=f'{match.group(1)}.'))
-            story.append(Spacer(1, 2))
+def link(label: str, target: str) -> str:
+    if not urlsplit(target).scheme and not target.startswith('#'):
+        if target == 'evaluation/results':
+            target = f'{REVISION_URL}/{target}'
         else:
-            paragraph.append(line)
-    flush_paragraph()
-    flush_table()
-    return story
+            target = f'{REPO}/blob/{REVISION}/{target}'
+    return f'<link href="{escape(target, quote=True)}" color="{TEAL.hexval()}"><u>{label}</u></link>'
+
+
+def inline(value: str) -> str:
+    parts = []
+    end = 0
+    for match in TOKEN.finditer(value):
+        parts.append(escape(value[end:match.start()]))
+        label, target, code, bold = match.groups()
+        if label is not None:
+            parts.append(link(inline(label), target))
+        elif code is not None:
+            parts.append(f'<font name="Courier" size="9">{escape(code)}</font>')
+        else:
+            parts.append(f'<b>{escape(bold)}</b>')
+        end = match.end()
+    parts.append(escape(value[end:]))
+    return ''.join(parts)
+
+
+class CodeBlock(Flowable):
+    font = 'Courier'
+    size = 8.0
+    leading = 11.5
+    padding = 8
+    spaceAfter = 7
+
+    def __init__(self, lines: list[str]):
+        super().__init__()
+        self.lines = lines
+
+    def wrap(self, available_width, available_height):
+        self.width = available_width
+        self.height = self.leading * len(self.lines) + 2 * self.padding
+        if any(stringWidth(line, self.font, self.size) > self.width - 2 * self.padding
+               for line in self.lines):
+            raise ValueError('A README code line is too wide. Add a shell continuation in README.md.')
+        return self.width, self.height
+
+    def draw(self):
+        canvas = self.canv
+        canvas.setFillColor(TINT)
+        canvas.roundRect(0, 0, self.width, self.height, 4, fill=1, stroke=0)
+        canvas.setFillColor(INK)
+        canvas.setFont(self.font, self.size)
+        y = self.height - self.padding - self.size
+        for line in self.lines:
+            canvas.drawString(self.padding, y, line)
+            y -= self.leading
+
+
+class ContributionField(Flowable):
+    spaceAfter = 12
+
+    def __init__(self, name: str, student_id: str):
+        super().__init__()
+        self.height = 81
+        self.name = name
+        self.student_id = student_id
+
+    def wrap(self, available_width, available_height):
+        self.width = available_width
+        return self.width, self.height
+
+    def draw(self):
+        canvas = self.canv
+        canvas.setFont('Helvetica-Bold', 11)
+        canvas.setFillColor(INK)
+        canvas.drawString(0, 65, self.name)
+        canvas.setFont('Helvetica', 10)
+        canvas.setFillColor(MUTED)
+        canvas.drawRightString(self.width, 65, self.student_id)
+        canvas.acroForm.textfield(
+            name=f'contribution_{self.student_id}', tooltip=f'Contribution for {self.name}',
+            value='', x=0, y=0, width=self.width, height=55, relative=True,
+            borderWidth=0.65, borderColor=RULE, fillColor=colors.white, textColor=INK,
+            fontName='Helvetica', fontSize=10.5, fieldFlags='multiline doNotScroll', maxlen=350,
+        )
+
+
+def data_table(rows: list[list[str]]) -> Table:
+    num_columns = len(rows[0])
+    width = A4[0] - 2 * MARGIN
+    proportions = (0.17, 0.39, 0.44) if num_columns == 3 else (0.26, 0.74)
+    if len(proportions) != num_columns or any(len(row) != num_columns for row in rows):
+        raise ValueError('Unexpected README table shape')
+    grid = Table(
+        [[Paragraph(inline(cell), STYLES['table_head' if index == 0 else 'cell'])
+          for cell in row] for index, row in enumerate(rows)],
+        colWidths=[width * fraction for fraction in proportions], repeatRows=1, hAlign='LEFT',
+    )
+    grid.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), TINT),
+        ('LINEBELOW', (0, 0), (-1, 0), 0.8, RULE),
+        ('LINEBELOW', (0, 1), (-1, -1), 0.4, RULE),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 9), ('RIGHTPADDING', (0, 0), (-1, -1), 9),
+        ('TOPPADDING', (0, 0), (-1, -1), 8), ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+    ]))
+    return grid
+
+
+def render_readme(markdown: str) -> list:
+    """Render the headings, paragraphs, lists, fences and tables used in README.md."""
+    blocks = re.split(r'^```[^\n]*\n(.*?)^```\s*$', markdown, flags=re.MULTILINE | re.DOTALL)
+    flow = []
+    for index, block in enumerate(blocks):
+        if index % 2:
+            flow.append(CodeBlock(block.splitlines()))
+            continue
+        for group in re.split(r'\n\s*\n', block.strip()):
+            if not group:
+                continue
+            lines = group.splitlines()
+            line = lines[0]
+            heading = re.fullmatch(r'(#{1,3}) (.+)', line)
+            if heading:
+                level, title = heading.groups()
+                if len(lines) != 1:
+                    raise ValueError(f'Add a blank line after heading: {title}')
+                if title in ('Detailed Instructions', 'Rerun the live evaluation', 'Results and report references'):
+                    flow.append(PageBreak())
+                key = {'#': 'title', '##': 'section', '###': 'heading'}[level]
+                item = Paragraph(inline(title), STYLES[key])
+                if level == '##':
+                    item.bookmark = title.lower().replace(' ', '-')
+                flow.append(item)
+            elif all(row.startswith('| ') and row.endswith(' |') for row in lines):
+                rows = [[cell.strip() for cell in row[1:-1].split('|')] for row in lines]
+                flow.extend([data_table([rows[0], *rows[2:]]), Spacer(1, 10)])
+            elif all(row.startswith('- ') for row in lines):
+                flow.extend(Paragraph(inline(row[2:]), STYLES['bullet'], bulletText='•') for row in lines)
+            else:
+                flow.append(Paragraph(inline(' '.join(lines)), STYLES['body']))
+    return flow
+
+
+class Submission(SimpleDocTemplate):
+    def afterFlowable(self, flowable):
+        bookmark = getattr(flowable, 'bookmark', None)
+        if bookmark:
+            self.canv.bookmarkPage(bookmark)
+            self.canv.addOutlineEntry(flowable.getPlainText(), bookmark, level=0)
 
 
 def draw_page(canvas, doc):
+    width, height = A4
     canvas.saveState()
-    width, _ = letter
-    canvas.setStrokeColor(colors.HexColor('#d8dee8'))
-    canvas.line(doc.leftMargin, 0.55 * inch, width - doc.rightMargin, 0.55 * inch)
-    canvas.setFont('Helvetica', 8)
-    canvas.setFillColor(colors.HexColor('#5a6574'))
-    canvas.drawString(doc.leftMargin, 0.36 * inch, 'FitPilot | CSIT6000V repository submission')
-    canvas.drawRightString(width - doc.rightMargin, 0.36 * inch, f'{doc.page}')
+    canvas.setStrokeColor(RULE)
+    canvas.setLineWidth(0.6)
+    canvas.line(MARGIN, 36, width - MARGIN, 36)
+    canvas.setFillColor(MUTED)
+    canvas.setFont('Helvetica', 8.5)
+    canvas.drawString(MARGIN, 22, 'FitPilot  /  CSIT6000V')
+    canvas.drawRightString(width - MARGIN, 22, str(doc.page))
+    if doc.page > 1:
+        canvas.drawString(MARGIN, height - 31, 'REPOSITORY README')
+        canvas.line(MARGIN, height - 39, width - MARGIN, height - 39)
     canvas.restoreState()
 
 
 def main() -> None:
     readme = (ROOT / 'README.md').read_text(encoding='utf-8')
-    check_path = ROOT / 'evaluation/results/verification.json'
-    verification = json.loads(check_path.read_text()) if check_path.exists() else None
-    planning_path = ROOT / 'evaluation/results/planning.json'
-    adaptation_path = ROOT / 'evaluation/results/adaptation.json'
-    feedback_path = ROOT / 'evaluation/results/feedback.json'
-    planning = json.loads(planning_path.read_text()) if planning_path.exists() else None
-    adaptation = json.loads(adaptation_path.read_text()) if adaptation_path.exists() else None
-    feedback = json.loads(feedback_path.read_text()) if feedback_path.exists() else None
-    styles = getSampleStyleSheet()
-    styles.add(ParagraphStyle(name='TitleCustom', parent=styles['Title'], fontName='Helvetica-Bold',
-                              fontSize=22, leading=27, textColor=colors.HexColor('#17243a'), alignment=TA_CENTER,
-                              spaceAfter=15))
-    styles.add(ParagraphStyle(name='SubtitleCustom', parent=styles['Normal'], fontSize=10, leading=14,
-                              alignment=TA_CENTER, textColor=colors.HexColor('#526174'), spaceAfter=18))
-    styles.add(ParagraphStyle(name='TableCell', parent=styles['BodyText'], fontSize=7.3, leading=9.3,
-                              spaceAfter=0, wordWrap='CJK'))
-    styles.add(ParagraphStyle(name='SubmissionCode', fontName='Courier', fontSize=7.2, leading=9,
-                              leftIndent=8, rightIndent=8, borderColor=colors.HexColor('#d8dee8'),
-                              borderWidth=.4, borderPadding=6, backColor=colors.HexColor('#f5f7fa'),
-                              spaceBefore=3, spaceAfter=4))
-    styles.add(ParagraphStyle(name='SubmissionBullet', parent=styles['BodyText'], leftIndent=15, firstLineIndent=-10,
-                              fontSize=9.2, leading=12, spaceAfter=1))
-    for level, size in [(1, 17), (2, 13), (3, 10.5)]:
-        styles.add(ParagraphStyle(name=f'SubmissionHeading{level}', parent=styles[f'Heading{level}'],
-                                  fontName='Helvetica-Bold', fontSize=size, leading=size + 4,
-                                  textColor=colors.HexColor('#17243a'), spaceBefore=9, spaceAfter=5,
-                                  keepWithNext=True))
-
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    doc = SimpleDocTemplate(str(OUT), pagesize=letter, rightMargin=.68*inch, leftMargin=.68*inch,
-                            topMargin=.62*inch, bottomMargin=.75*inch, title='FitPilot Repository Submission',
-                            author='CSIT6000V project group')
-    story = [Spacer(1, .45*inch), Paragraph('GitHub Repository Submission', styles['TitleCustom']),
-             Paragraph('CSIT6000V · FitPilot', styles['SubtitleCustom']),
-             Paragraph(f'<b>Repository:</b> <link href="{REPO}" color="#1769aa">{REPO}</link>', styles['BodyText']),
-             Paragraph(f'<b>Pinned grading revision:</b> <link href="{REPO}/tree/{TAG}" color="#1769aa">{TAG}</link>', styles['BodyText']),
-             Spacer(1, 12), Paragraph('Group contributions', styles['Heading2']),
-             Paragraph('The contribution fields are left blank for the group to complete.', styles['BodyText']),
-             Spacer(1, 7)]
-    for name, student_id in [('Harry Chandra Tsjan', '21340623'),
-                             ('Allabonu Sri Harsha Lakshman', '21344461'),
-                             ('Nehanth Kasi Geetha', '21386988')]:
-        story.append(Paragraph(f'<b>{escape(name)} ({student_id})</b>', styles['BodyText']))
-        story.extend([Paragraph('Contribution: __________________________________________________________', styles['BodyText']),
-                      Spacer(1, 7)])
-    if verification:
-        story.extend([Spacer(1, 7), Paragraph('Artifact verification snapshot', styles['Heading2']),
-                      Paragraph(f"Recorded {escape(verification.get('timestamp_utc', '')[:10])} on Python {escape(verification.get('python', ''))}; "
-                                f"overall status: <b>{'PASS' if verification.get('passed') else 'INCOMPLETE'}</b>.", styles['BodyText'])])
-        for row in verification.get('checks', []):
-            story.append(Paragraph(f"• {escape(row['name'])}: {'PASS' if row['exit_code'] == 0 else 'FAIL'}", styles['BodyText']))
-        story.append(Paragraph('These are local software checks with simulated model responses and synthetic pose tests. They do not establish recommendation quality or real-video pose accuracy.', styles['BodyText']))
-    if planning and adaptation and feedback:
-        def live_score(suite, mode):
-            rows = [row for row in suite['records'] if row['mode'] == mode]
-            feasible = [row for row in rows if row['expected'] == 'valid_plan']
-            blocked = [row for row in rows if row['expected'] == 'reject']
-            return (sum(row['meets_expected_outcome'] for row in feasible), len(feasible),
-                    sum(row['meets_expected_outcome'] for row in blocked), len(blocked))
-
-        p = live_score(planning, 'multi_agent')
-        a = live_score(adaptation, 'multi_agent')
-        good = sum(bool(row['passed']) for row in feedback['cases'])
-        story.extend([Spacer(1, 8), Paragraph('Live TACC evaluation snapshot', styles['Heading2']),
-                      Paragraph(f"Model: {escape(planning['model'])}. Planning: {p[0]}/{p[1]} feasible drafts passed all checks and {p[2]}/{p[3]} infeasible menus were rejected. Adaptation: {a[0]}/{a[1]} feasible drafts passed and {a[2]}/{a[3]} infeasible menus were rejected. Synthetic-summary exercise feedback: {good}/{len(feedback['cases'])} cases passed.", styles['BodyText']),
-                      Paragraph('The scoring uses deterministic app checks and synthetic cases. No real-video pose accuracy was measured.', styles['BodyText'])])
-    story.extend([PageBreak(), Paragraph('Repository README', styles['TitleCustom']),
-                  Paragraph('Full README.md contents from the repository revision accompanying this PDF.', styles['SubtitleCustom'])])
-    story.extend(parse_readme(readme, styles))
-    doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
-    print(OUT)
+    if REVISION_URL not in readme:
+        raise ValueError('The submission cover and README must reference the same GitHub revision.')
+    OUTPUT.parent.mkdir(exist_ok=True)
+    doc = Submission(str(OUTPUT), pagesize=A4, title='FitPilot · GitHub repository submission',
+                     author='FitPilot project group', leftMargin=MARGIN - 6, rightMargin=MARGIN - 6,
+                     topMargin=57, bottomMargin=50)
+    cover = [
+        Paragraph('CSIT6000V COURSE PROJECT', STYLES['eyebrow']),
+        Paragraph('FitPilot', STYLES['cover_title']),
+        Paragraph('GitHub repository submission', STYLES['cover_subtitle']),
+        Paragraph('GitHub repository', STYLES['heading']),
+        Paragraph(link(REPO.removeprefix('https://'), REPO), STYLES['body']),
+        Paragraph(f'Pinned revision · {link(REVISION, REVISION_URL)}', STYLES['body']),
+        Spacer(1, 12),
+        Paragraph('Group contributions', STYLES['heading']),
+        Spacer(1, 2),
+        *(ContributionField(*member) for member in MEMBERS),
+        Spacer(1, 10),
+        Paragraph('Repository README', STYLES['heading']),
+        Paragraph(link('Getting Started Instructions', '#getting-started-instructions'), STYLES['body']),
+        Paragraph(link('Detailed Instructions', '#detailed-instructions'), STYLES['body']),
+    ]
+    doc.build([*cover, PageBreak(), *render_readme(readme)], onFirstPage=draw_page, onLaterPages=draw_page)
+    print(OUTPUT)
 
 
 if __name__ == '__main__':

@@ -1,173 +1,125 @@
 # FitPilot
 
-CSIT6000V course project: a personal fitness web app with a React UI, FastAPI multi-agent planner, browser pose tracking, and optional TACC Qwen / OpenAI-compatible inference. This README follows the [NSDI ’27 Call for Artifacts](https://www.usenix.org/conference/nsdi27/call-for-artifacts) structure required by the course.
+FitPilot is a fitness planning app built for CSIT6000V. Its React dashboard tracks exercise pose in the browser. The FastAPI backend coordinates five planning and feedback agents and stores profiles, plans, and progress in PostgreSQL. Live agent requests use TACC Qwen or a compatible model endpoint.
 
-Repository: https://github.com/h4r1yzz/csit6000v-project
-
-Pinned grading revision: [grading-submission-2026-11-21](https://github.com/h4r1yzz/csit6000v-project/tree/grading-submission-2026-11-21)
+[Public GitHub repository](https://github.com/h4r1yzz/csit6000v-project) · [Pinned grading revision](https://github.com/h4r1yzz/csit6000v-project/tree/grading-submission-2026-11-21-v2)
 
 ## Getting Started Instructions
 
-Use this section to install FitPilot and confirm basic functionality within about 30 minutes (excluding slow dependency downloads).
-
 ### Prerequisites
 
-- Git
-- Python 3.10+ (recorded checks used Python 3.12)
-- Node.js 22.18+ with npm (required for the pose unit tests)
-- Free local ports `5173` (UI) and `8000` (API)
-- Internet access to install dependencies
-- macOS or Linux for the recorded one-command launcher (`scripts/dev.py`)
-- A Neon (or other Postgres) database URL for `DATABASE_URL` (prefer a disposable branch for tests)
+- Git, Python 3.11, Node.js 22.18 or later with npm, and a macOS or Linux shell.
+- A disposable PostgreSQL database (local or hosted) and a login that can create schemas in it. Keep connection credentials out of Git.
+- Internet access for dependency installation. The smoke test runs without a camera, GPU, TACC account, or model endpoint.
 
-No local GPU is required for setup or the simulated end-to-end check. Live planning and coaching need a reachable model endpoint (course TACC Qwen or another OpenAI-compatible service).
-
-### Setup
+### Install and configure
 
 ```bash
-git clone https://github.com/h4r1yzz/csit6000v-project.git
+git clone --branch grading-submission-2026-11-21-v2 \
+  https://github.com/h4r1yzz/csit6000v-project.git
 cd csit6000v-project
-
-python3 -m venv backend/.venv
-backend/.venv/bin/python -m pip install -r backend/requirements.txt
+python3.11 -m venv backend/.venv
+backend/.venv/bin/python -m pip install -r backend/requirements-dev.txt
 npm ci --prefix frontend
 ```
 
-Copy `backend/.env.example` to `backend/.env` and set `DATABASE_URL` (required). Optionally set `QWEN_BASE_URL` or `LLM_BASE_URL` for a model. `scripts/dev.py` loads that file automatically. Without a reachable model, account/catalog/pose features still work; plan generation, specialist agents, and coach chat return HTTP 503.
-
-Start the API and UI:
+Export `TEST_DATABASE_URL` with your disposable database's connection string in the same shell. If PostgreSQL is already running locally and your login can create databases, run the commands below.
 
 ```bash
-python3 scripts/dev.py
+createdb fitpilot_artifact
+export TEST_DATABASE_URL='postgresql:///fitpilot_artifact'
 ```
 
-Then open http://127.0.0.1:5173 (UI) and http://127.0.0.1:8000/docs (API). Stop with Ctrl+C.
-
-For TACC Qwen through the course gateway (after a GPU serve job is running):
+### Run the end-to-end smoke test
 
 ```bash
-python3 scripts/dev.py --tacc-job SERVICE_JOB_ID
-```
-
-Details: [`backend/tacc/README.md`](backend/tacc/README.md).
-
-### Small end-to-end example
-
-From the repository root, after setup:
-
-```bash
-backend/.venv/bin/python -m pip install -r backend/requirements-dev.txt
-# Uses TEST_DATABASE_URL or DATABASE_URL; creates a disposable schema then drops it.
 backend/.venv/bin/python scripts/smoke.py
 ```
 
-Expected output:
+The test registers an account, calls all five stages using simulated model responses, validates the draft, approves it, and reads back the active plan. It creates and removes isolated PostgreSQL schemas. A passing run prints the following lines.
 
 ```text
 PASS: account -> five simulated model stages -> valid draft -> approval -> persisted active plan
 SIMULATED MODEL: this checks application integration, not live inference or recommendation quality.
 ```
 
-This uses an isolated Postgres schema and real API routes. Only the model transport is simulated. It does not contact a live model. Prefer a disposable Neon branch so smoke/verify do not share production data.
+### Open the app
+
+```bash
+DATABASE_URL="$TEST_DATABASE_URL" python3.11 scripts/dev.py
+```
+
+Open the [dashboard](http://127.0.0.1:5173) or [API documentation](http://127.0.0.1:8000/docs). Create an app account to open the dashboard. Stop the launcher with Ctrl+C. Follow the [TACC setup guide](backend/tacc/README.md) to enable live planning, specialist agents, and chat.
 
 ## Detailed Instructions
 
-Use this section to rerun the evaluation that supports the repository artifact claims.
+### Verify the application
 
-### Recorded deterministic evaluation
-
-Reproduce the checks recorded in `evaluation/results/`:
+With `TEST_DATABASE_URL` still exported, run the full local check. It builds the frontend, runs the backend and pose tests, and runs the API smoke test. Each check should print `PASS`. The recorded verification used Python 3.11.18 and PostgreSQL 17, and passed 43 backend tests and 17 synthetic pose tests. See the [verification record and logs](evaluation/results).
 
 ```bash
-backend/.venv/bin/python -m pip install -r backend/requirements-dev.txt
-# Export DATABASE_URL or TEST_DATABASE_URL first (disposable Neon branch recommended).
-backend/.venv/bin/python scripts/verify.py
+RUN_DIR=$(mktemp -d)
+backend/.venv/bin/python scripts/verify.py --output "$RUN_DIR/verification.json"
 ```
 
-`scripts/verify.py` runs:
+### Test cases and scoring
 
-| Check | Command | Expected |
+| Suite | Data | Metric |
 | --- | --- | --- |
-| Frontend build | `npm run build --prefix frontend` | Exit 0 |
-| Backend tests | `cd backend && .venv/bin/python -m unittest discover -s tests -v` | Pass (requires `DATABASE_URL` / `TEST_DATABASE_URL`) |
-| Pose unit tests | `node --test frontend/src/pose/analysis.test.mjs` | Pass |
-| API smoke | `backend/.venv/bin/python scripts/smoke.py` | `PASS: account -> five simulated model stages...` |
+| Planning | [20 synthetic profiles](evaluation/planning_cases.json), including two infeasible menus | Valid draft rate on feasible trials and explicit rejection rate on infeasible trials |
+| Adaptation | [10 profile changes](evaluation/adaptation_cases.json) with validated prior plans, including two infeasible changes | Valid replan rate and repair rate when the prior plan breaks the new constraints |
+| Feedback | A missing session and two synthetic pose summaries in [the feedback runner](scripts/evaluate_feedback.py) | Returned metric consistency and a confidence note when measurements are absent or low confidence |
 
-Recorded run (2026-11-21, Python 3.11.18, local PostgreSQL; see `evaluation/results/verification.json`):
+The live comparison uses the same case inputs and final validator for the five specialists, a one-call generalist, and a generalist with one revision. The validator checks schedule, session time, exercise eligibility, dietary compatibility, catalog facts, weekly servings, and budget. The traces include model responses, specialist stage order and status, validation, latency, calls, and tokens. See the [scoring methodology](docs/EVALUATION.md).
 
-- `frontend_build`: PASS
-- `backend_tests`: 43 passed, 0 skipped, 0 failures
-- `pose_tests`: 17 passed
-- `api_smoke`: PASS
+### Rebuild tables from the recorded runs
 
-Logs: `evaluation/results/*.log`. The verification run uses a disposable PostgreSQL schema and simulated model responses. It checks software integration and synthetic pose calculations, not live model quality or real-video accuracy.
-
-Validate evaluation case files without calling a model:
+This command uses the committed traces and prints Tables 1–5 without a database or a model service. The output should match the [recorded tables](evaluation/results/tables.md).
 
 ```bash
-backend/.venv/bin/python scripts/evaluate.py --validate-only
-backend/.venv/bin/python scripts/evaluate.py --suite adaptation --validate-only
+backend/.venv/bin/python scripts/summarize_evaluation.py
 ```
 
-Expected: a `PASS` line confirming the planning or adaptation cases satisfy the profile schema.
+### Rerun the live evaluation
 
-### Test cases, data, and configurations
-
-| Artifact | Path | Role |
-| --- | --- | --- |
-| Planning cases | `evaluation/planning_cases.json` | 20 synthetic profiles (schedule, duration, equipment, diet, allergies, currency, two infeasible catalog/budget cases) |
-| Adaptation cases | `evaluation/adaptation_cases.json` | 10 constraint-change scenarios after an initial plan |
-| Smoke / verify runner | `scripts/smoke.py`, `scripts/verify.py` | Deterministic integration checks |
-| Live comparison runner | `scripts/evaluate.py` | Real model calls for planning/adaptation suites |
-| Live feedback checks | `scripts/evaluate_feedback.py` | Signed-in feedback endpoint with missing, low-confidence and clear synthetic pose summaries |
-| Recorded verify outputs | `evaluation/results/` | Logs + `verification.json` from the recorded deterministic run |
-| Default app config | `backend/.env.example` | Required `DATABASE_URL`, model URL, timeouts, timezone, CORS |
-
-Live evaluation (requires a reachable model and `TEST_DATABASE_URL` or `DATABASE_URL` pointing to a disposable Postgres database):
+Start the course Qwen service and connect through the [TACC setup guide](backend/tacc/README.md). With the tunnel active, run the commands below from the repository root in a second shell with `TEST_DATABASE_URL` exported. Replace the example URL if you use a different reachable address. Use a fresh temporary output directory for each independent run.
 
 ```bash
-export TEST_DATABASE_URL='postgresql://USER:PASSWORD@HOST/DATABASE?sslmode=require'
-export QWEN_BASE_URL='http://127.0.0.1:18000/v1' # example: a live endpoint or local TACC SSH tunnel
+unset LLM_BASE_URL LLM_MODEL LLM_API_KEY LLM_TIMEOUT_SECONDS
+export QWEN_BASE_URL='http://127.0.0.1:18000/v1'
 export QWEN_MODEL='qwen3.8-27b'
-backend/.venv/bin/python scripts/evaluate.py --suite planning --repeats 3 --workers 4 --output evaluation/results/planning.json
-backend/.venv/bin/python scripts/evaluate.py --suite adaptation --repeats 3 --workers 4 --output evaluation/results/adaptation.json
-backend/.venv/bin/python scripts/summarize_evaluation.py --output evaluation/results/tables.md
+export QWEN_TIMEOUT_SECONDS=90
+RUN_DIR=$(mktemp -d)
+backend/.venv/bin/python scripts/evaluate.py --suite planning \
+  --repeats 3 --workers 4 --output "$RUN_DIR/planning.json"
+backend/.venv/bin/python scripts/evaluate.py --suite adaptation \
+  --repeats 3 --workers 4 --output "$RUN_DIR/adaptation.json"
+backend/.venv/bin/python scripts/evaluate_feedback.py --output "$RUN_DIR/feedback.json"
+backend/.venv/bin/python scripts/summarize_evaluation.py \
+  --planning "$RUN_DIR/planning.json" --adaptation "$RUN_DIR/adaptation.json" \
+  --output "$RUN_DIR/tables.md"
 ```
 
-The planning run makes 180 scenario attempts (20 cases × 3 methods × 3 repeats); adaptation makes 90. The checked-in live runs use TACC Qwen `qwen3.8-27b`. Planning results are assembled from per-method runs so the corrected generalist revision and explicit specialist-stage traces are retained. `planning.json` records each method's runner hash. The live runner checkpoints every attempt; add `--resume` with the same arguments after interruption. These commands consume model quota. A successful process exit means the experiment finished, not that every draft passed; inspect the raw outputs and generated tables.
+The full run produces 180 planning trials and 90 adaptation trials with three repeats per case and method. The runner uses UTC, a temperature of 0.2, and four concurrent workers in the commands above. Allow for GPU scheduling and the course job's one-hour limit. If the job expires, stop the run, reconnect to a new service and add `--resume` to the interrupted command with the same arguments and output path. Use a new output directory for a complete rerun if the checkpoint contains outage failures.
 
-The recorded live planning results show 52/54 feasible drafts passing all checks for the five-specialist workflow, 52/54 completing all five specialist stages, and 6/6 infeasible cases correctly stopping at nutrition. The one-call and generalist-plus-revision baselines passed 0/54 feasible trials each and explicitly recognized 3/6 infeasible cases each. For adaptation, the specialist workflow passed 24/24 feasible cases and correctly rejected 6/6 infeasible cases. Tables 1–5 and the methodology are in [`docs/EVALUATION.md`](docs/EVALUATION.md); raw traces, latency, token and flow records are in `evaluation/results/`.
+### Results and report references
 
-`evaluate_feedback.py` also passed 3/3 live API cases using synthetic pose summaries. It checks missing measurements, a low-confidence summary and a clear-view summary, including the metrics returned to the model. No labeled workout video was supplied, so the repository makes no real-video pose-accuracy claim.
+Use the table numbers in the [evaluation report](docs/EVALUATION.md#recorded-live-results) to locate each result. The committed [raw results and logs](evaluation/results) include complete model traces and the inputs used to generate these tables.
 
-### Mapping to the project report
+| Reference | Recorded finding |
+| --- | --- |
+| Table 1 · Planning | Specialists passed 52/54 feasible trials. Each generalist baseline passed 0/54. Specialists correctly rejected 6/6 infeasible trials and each baseline rejected 3/6 with the correct reason. |
+| Table 2 · Adaptation | Specialists passed 24/24 feasible trials and repaired 15/15 invalidated prior plans. The one-call and revision baselines passed 1/24 and 3/24 feasible trials, respectively. |
+| Tables 3 and 4 · Cost and outcomes | Planning median time was 75.3 s for specialists, 27.8 s for one call, and 46.8 s for the revision baseline. See the tables for spread, token counts, and failure counts. |
+| Table 5 · Stage flow | Specialists completed all five stages in 52/54 feasible planning and 24/24 feasible adaptation trials. The 12 infeasible trials stopped at nutrition. |
 
-The final course report was not present in the supplied checkout, so page numbers cannot be cross-referenced here. Cite the report-ready tables in [`docs/EVALUATION.md`](docs/EVALUATION.md) and map those table numbers into the final course report.
+The [feedback API record](evaluation/results/feedback.json) contains the 3/3 successful synthetic cases and their returned summaries.
 
-| Claim / result in report | How to reproduce | Status in this artifact |
-| --- | --- | --- |
-| Implementation / integration checks | `scripts/verify.py` | Recorded in `evaluation/results/` |
-| Planning / constraint comparison | `evaluation/planning_cases.json` + `scripts/evaluate.py --suite planning` | Tables 1, 3, 4, 5 in `docs/EVALUATION.md`; raw cases/traces in `evaluation/results/planning*.json` |
-| Adaptation comparison | `evaluation/adaptation_cases.json` + `scripts/evaluate.py --suite adaptation` | Tables 2, 3, 4, 5 in `docs/EVALUATION.md`; raw traces in `evaluation/results/adaptation.json` |
-| Pose feedback API behavior | `scripts/evaluate_feedback.py` | Three live synthetic-summary cases in `evaluation/results/feedback.json`; not a video-accuracy result |
-| Pose / cue accuracy on real video | Browser Form check protocol in `docs/POSE.md` | Not measured; no labeled workout clips were provided |
-| Latency / token / model-call tables | Live `evaluate.py` JSON + provider usage | Table 3 in `docs/EVALUATION.md` and `evaluation/results/tables.md` |
+### Limitations and expected variation
 
-### Known limitations and expected variation
+- The live results apply to these synthetic cases, prompts, catalog, validators, and course Qwen configuration. The specialist workflow also uses catalog logic and structured stages, so the comparison cannot isolate the effect of agent count.
+- Treat the recorded rates as reference points. Compare feasible pass rates, explicit rejections, and stage completion. Model outputs and token use vary with sampling. Network and GPU load affect latency. The report includes per-repeat counts and latency spread.
+- Live reruns require authorized access to the course model or a reachable substitute. A different model can change the results. The local smoke test and recorded tables can be checked independently of that access.
+- The pose tests use synthetic landmarks and the feedback API uses synthetic summaries. Real-video pose accuracy and rep-count error remain unmeasured. See the [pose protocol](docs/POSE.md) for a labeled-video assessment.
 
-- Planning, specialist agents, and coach chat **require** a configured reachable model. There is no local-rules substitute; failures return HTTP 503.
-- Graders need their own authorized TACC (or other model) access for live runs. Endpoint URL alone does not prove availability.
-- Simulated smoke/verify results are not model-quality or real-video accuracy measurements.
-- Live model text, exercise choices, latency, and token counts vary with provider version, GPU queue, network, and sampling. Use at least three repeats and report spread when claiming live results.
-- Exact generated wording is not expected to match across runs. Constraint pass rates and output/error counts are the primary metrics; timing and tokens are descriptive and vary with provider version, GPU queue, network, and sampling.
-- Neon/Postgres is required for the app and for smoke/verify. Deployment notes: `docs/DEPLOY-VERCEL.md`.
-
-### Further documentation
-
-Architecture, API, pose tracker, database, and deployment details: `docs/IMPLEMENTATION.md`, `docs/API.md`, `docs/POSE.md`, `docs/DATABASE.md`, `docs/DEPLOY-VERCEL.md`.
-
-## Group contributions
-
-- **Harry Chandra Tsjan (21340623):**
-- **Allabonu Sri Harsha Lakshman (21344461):**
-- **Nehanth Kasi Geetha (21386988):**
+See the [implementation guide](docs/IMPLEMENTATION.md), [API reference](docs/API.md) and [database guide](docs/DATABASE.md) for system details. This README follows the [NSDI ’27 artifact instructions](https://www.usenix.org/conference/nsdi27/call-for-artifacts).

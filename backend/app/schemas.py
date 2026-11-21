@@ -80,7 +80,7 @@ class PlanContent(Model):
 class PlanSave(Model):
     title: str = Field(default='Your balanced week', min_length=1, max_length=100)
     content: PlanContent
-    source: Literal['tacc_qwen', 'llm', 'local_fallback', 'mixed'] = 'local_fallback'
+    source: Literal['tacc_qwen', 'llm', 'local_fallback', 'mixed'] = 'tacc_qwen'
     workflow_id: Optional[int] = None
 
 

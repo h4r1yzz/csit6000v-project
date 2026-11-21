@@ -113,7 +113,7 @@ def _send_chat(cfg: dict, payload: dict, timeout: float) -> dict[str, Any]:
             raise ModelUnavailable('The model returned an empty answer')
         return {'role': 'assistant', 'content': content.strip(), 'source': cfg['source']}
     except (HTTPError, HTTPException, URLError, TimeoutError, OSError, ValueError, KeyError, IndexError, TypeError) as exc:
-        raise ModelUnavailable('The configured model could not complete the request; local rules were used') from exc
+        raise ModelUnavailable('The configured model could not complete the request') from exc
 
 
 def ask(messages: list[dict[str, Any]], *, temperature: float = 0.2, max_tokens: int = 1600,

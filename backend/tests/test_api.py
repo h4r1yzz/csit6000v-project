@@ -37,8 +37,27 @@ class FitPilotTests(unittest.TestCase):
         db.DB_PATH = self.previous_path
         self.tmp.cleanup()
 
-    def generate(self):
-        response = self.client.post('/api/workflows/plan', json={})
+    def stage_answers(self, ctx=None):
+        ctx = ctx or agents.context()
+        menus = agents.nutrition_options(ctx)
+        nutrition = {
+            'menu_id': next(iter(menus)),
+            'summary': 'A catalog menu matched to your preferences.',
+        } if menus else {'menu_id': 'menu_1', 'summary': 'No compatible menu.'}
+        goal = agents.fallback('goal_planning', ctx)
+        return [
+            json.dumps({'summary': goal['summary'], 'priorities': goal['priorities']}),
+            json.dumps(agents.fallback('exercise_planning', ctx)),
+            json.dumps(nutrition),
+            json.dumps(agents.fallback('exercise_feedback', ctx)),
+            json.dumps(agents.fallback('evaluation_adaptation', ctx)),
+        ]
+
+    def generate(self, answers=None):
+        payload = answers if answers is not None else self.stage_answers()
+        with patch.dict(os.environ, {'LLM_BASE_URL': 'http://localhost:12345/v1', 'LLM_MODEL': 'test-model'}):
+            with patch('app.tacc.ask', side_effect=payload):
+                response = self.client.post('/api/workflows/plan', json={})
         self.assertEqual(response.status_code, 200, response.text)
         return response.json()
 
@@ -56,7 +75,7 @@ class FitPilotTests(unittest.TestCase):
         self.assertTrue(draft['validation']['valid'])
         self.assertTrue(draft['requires_approval'])
         self.assertIsNone(self.client.get('/api/overview').json()['active_plan'])
-        self.assertTrue(all(x['source'] == 'local_fallback' for x in draft['steps']))
+        self.assertTrue(all(x['source'] == 'llm' for x in draft['steps']))
         self.assertEqual(len(self.client.get('/api/agent-runs').json()), 5)
         restored = self.client.get(f"/api/workflows/{draft['workflow_id']}").json()
         self.assertEqual(restored['result']['content'], draft['content'])
@@ -79,10 +98,10 @@ class FitPilotTests(unittest.TestCase):
         first = self.generate()
         approved = self.client.post('/api/plans', json=first).json()
         self.update_profile(weekly_budget=0)
-        draft = self.generate()
-        self.assertFalse(draft['validation']['valid'])
-        response = self.client.post('/api/plans', json=draft)
-        self.assertEqual(response.status_code, 422)
+        with patch.dict(os.environ, {'LLM_BASE_URL': 'http://localhost:12345/v1', 'LLM_MODEL': 'test-model'}):
+            with patch('app.tacc.ask', side_effect=self.stage_answers()):
+                response = self.client.post('/api/workflows/plan', json={})
+        self.assertEqual(response.status_code, 503, response.text)
         self.assertEqual(self.client.get('/api/overview').json()['active_plan']['id'], approved['id'])
 
     def test_changed_constraints_and_tampered_draft_rejected(self):
@@ -93,27 +112,32 @@ class FitPilotTests(unittest.TestCase):
         draft['content']['summary'] = 'Tampered summary'
         self.assertEqual(self.client.post('/api/plans', json=draft).status_code, 422)
 
-    def test_bad_model_output_falls_back_and_transport_failure_circuits_workflow(self):
-        with patch('app.tacc.ask', return_value='{"workouts": "wrong"}'):
-            draft = self.generate()
-        self.assertTrue(draft['validation']['valid'])
-        self.assertTrue(all(step['source'] == 'local_fallback' for step in draft['steps']))
-        with patch('app.tacc.ask', side_effect=tacc.ModelUnavailable('offline')) as ask:
-            draft = self.generate()
+    def test_bad_model_output_and_transport_failure_do_not_use_local_rules(self):
+        with patch.dict(os.environ, {'LLM_BASE_URL': 'http://localhost:12345/v1', 'LLM_MODEL': 'test-model'}):
+            with patch('app.tacc.ask', return_value='{"workouts": "wrong"}'):
+                response = self.client.post('/api/workflows/plan', json={})
+        self.assertEqual(response.status_code, 503, response.text)
+        with patch.dict(os.environ, {'LLM_BASE_URL': 'http://localhost:12345/v1', 'LLM_MODEL': 'test-model'}):
+            with patch('app.tacc.ask', side_effect=tacc.ModelUnavailable('offline')) as ask:
+                response = self.client.post('/api/workflows/plan', json={})
+        self.assertEqual(response.status_code, 503, response.text)
         self.assertEqual(ask.call_count, 1)
-        self.assertTrue(draft['validation']['valid'])
+        self.assertIn('offline', response.json()['detail'])
+        self.assertEqual(self.client.get('/api/workflows?limit=1').json()[0]['status'], 'failed')
+
+    def test_unconfigured_model_rejects_plan_generation(self):
+        response = self.client.post('/api/workflows/plan', json={})
+        self.assertEqual(response.status_code, 503, response.text)
+        self.assertIn('Configure', response.json()['detail'])
 
     def test_valid_model_stages_are_used_and_source_is_truthful(self):
         ctx = agents.context()
-        answers = [json.dumps(agents.fallback(a['id'], ctx)) for a in agents.AGENTS]
+        answers = self.stage_answers(ctx)
         answers[2] = json.dumps({'menu_id': 'menu_2', 'summary': 'A model-selected catalog menu.'})
         first = json.loads(answers[0])
         first['summary'] = 'A model-authored goal summary.'
         answers[0] = json.dumps(first)
-        with patch.dict(os.environ, {'LLM_BASE_URL': 'http://localhost:12345/v1'}):
-            with patch('app.tacc.ask', side_effect=answers) as ask:
-                draft = self.generate()
-        self.assertEqual(ask.call_count, 5)
+        draft = self.generate(answers)
         self.assertEqual(draft['source'], 'llm')
         self.assertEqual(draft['content']['summary'], 'A model-authored goal summary.')
         self.assertEqual(draft['steps'][2]['output']['summary'], 'A model-selected catalog menu.')
@@ -151,7 +175,10 @@ class FitPilotTests(unittest.TestCase):
     def test_evaluator_detects_changed_active_constraints(self):
         self.client.post('/api/plans', json=self.generate())
         self.update_profile(weekly_budget=1)
-        result = self.client.post('/api/agents/evaluation_adaptation/run', json={}).json()['output']
+        answer = json.dumps(agents.fallback('evaluation_adaptation', agents.context()))
+        with patch.dict(os.environ, {'LLM_BASE_URL': 'http://localhost:12345/v1', 'LLM_MODEL': 'test-model'}):
+            with patch('app.tacc.ask', return_value=answer):
+                result = self.client.post('/api/agents/evaluation_adaptation/run', json={}).json()['output']
         self.assertTrue(result['replan_recommended'])
         self.assertTrue(any('no longer matches' in s for s in result['observations']))
 
@@ -161,27 +188,33 @@ class FitPilotTests(unittest.TestCase):
         response = self.client.post('/api/pose-sessions', json=summary)
         self.assertEqual(response.status_code, 200, response.text)
         pose = response.json()
-        run = self.client.post('/api/agents/exercise_feedback/run', json={'pose_session_id': pose['id']}).json()
+        feedback = json.dumps(agents.fallback('exercise_feedback', agents.context(pose['id'])))
+        with patch.dict(os.environ, {'LLM_BASE_URL': 'http://localhost:12345/v1', 'LLM_MODEL': 'test-model'}):
+            with patch('app.tacc.ask', return_value=feedback):
+                run = self.client.post('/api/agents/exercise_feedback/run', json={'pose_session_id': pose['id']}).json()
         self.assertEqual(run['output']['metrics']['reps'], 8)
         self.assertIn('Low visibility', run['output']['confidence_note'])
         self.assertEqual(len(self.client.get('/api/pose-sessions').json()), 1)
         self.assertEqual(self.client.get('/api/overview').json()['stats']['total_workouts'], 0)
         self.client.post('/api/workouts', json={'exercise':'Squat','duration_minutes':2,'perceived_effort':9,'notes':'8 reps'})
-        evaluation = self.client.post('/api/agents/evaluation_adaptation/run', json={}).json()['output']
+        evaluation_answer = json.dumps(agents.fallback('evaluation_adaptation', agents.context()))
+        with patch.dict(os.environ, {'LLM_BASE_URL': 'http://localhost:12345/v1', 'LLM_MODEL': 'test-model'}):
+            with patch('app.tacc.ask', return_value=evaluation_answer):
+                evaluation = self.client.post('/api/agents/evaluation_adaptation/run', json={}).json()['output']
         self.assertTrue(evaluation['replan_recommended'])
         self.assertEqual(evaluation['average_effort'], 9)
         self.assertEqual(self.client.get('/api/overview').json()['stats']['total_minutes'], 2)
 
-    def test_validation_errors_and_chat_routing(self):
+    def test_validation_errors_and_chat_requires_model(self):
         self.assertEqual(self.client.post('/api/pose-sessions', json={}).status_code, 422)
         self.assertEqual(self.client.post('/api/agents/missing/run', json={}).status_code, 404)
         self.assertEqual(self.client.post('/api/agents/exercise_feedback/run', json={'pose_session_id': 999}).status_code, 404)
         profile = self.client.get('/api/profile').json()
         profile['scheduled_days'] = ['Monday']
         self.assertEqual(self.client.put('/api/profile', json=profile).status_code, 422)
-        response = self.client.post('/api/assistant/chat', json={'message':'Suggest nutrition for my week'}).json()
-        self.assertEqual(response['agent_id'], 'nutrition')
-        self.assertEqual(len(self.client.get('/api/assistant/messages').json()), 2)
+        response = self.client.post('/api/assistant/chat', json={'message':'Suggest nutrition for my week'})
+        self.assertEqual(response.status_code, 503, response.text)
+        self.assertEqual(len(self.client.get('/api/assistant/messages').json()), 1)
         self.assertFalse(self.client.get('/api/health').json()['llm_configured'])
 
     def test_migration_is_additive_and_repeatable(self):
@@ -211,10 +244,10 @@ class FitPilotTests(unittest.TestCase):
             ex.update(sets=6, reps='30', rest_seconds=180)
         self.assertEqual(self.client.post('/api/plans', json=draft).status_code, 422)
         self.update_profile(dietary_preferences='halal')
-        draft = self.generate()
-        self.assertFalse(draft['validation']['valid'])
-        self.assertEqual(draft['content']['meals'], [])
-        self.assertEqual(self.client.post('/api/plans', json=draft).status_code, 422)
+        with patch.dict(os.environ, {'LLM_BASE_URL': 'http://localhost:12345/v1', 'LLM_MODEL': 'test-model'}):
+            with patch('app.tacc.ask', side_effect=self.stage_answers()):
+                response = self.client.post('/api/workflows/plan', json={})
+        self.assertEqual(response.status_code, 503, response.text)
 
     def test_allergen_phrases_and_equipment_negation(self):
         self.update_profile(dietary_preferences='no peanuts', food_allergies='soy allergy, nuts', equipment='bodyweight, no dumbbells')
@@ -242,8 +275,9 @@ class FitPilotTests(unittest.TestCase):
         ctx = agents.context()
         response = agents.fallback('evaluation_adaptation', ctx)
         response.update(replan_recommended=False, average_effort=0, adherence_percent=0, observations=[])
-        with patch('app.tacc.ask', return_value=json.dumps(response)):
-            run = self.client.post('/api/agents/evaluation_adaptation/run', json={}).json()
+        with patch.dict(os.environ, {'LLM_BASE_URL': 'http://localhost:12345/v1', 'LLM_MODEL': 'test-model'}):
+            with patch('app.tacc.ask', return_value=json.dumps(response)):
+                run = self.client.post('/api/agents/evaluation_adaptation/run', json={}).json()
         self.assertTrue(run['output']['replan_recommended'])
         self.assertEqual(run['output']['average_effort'], 9)
         self.assertTrue(run['output']['observations'])
@@ -335,11 +369,13 @@ class FitPilotTests(unittest.TestCase):
 
     def test_coordinator_surfaces_clarification_for_unsupported_diet(self):
         self.update_profile(dietary_preferences='halal')
-        draft = self.generate()
-        self.assertTrue(draft['clarification'])
-        self.assertTrue(any('catalog meals' in note.lower() for note in draft['clarification']))
-        self.assertFalse(draft['validation']['valid'])
-        self.assertEqual(len(draft['steps']), 5)
+        notes = agents.planning_clarifications(agents.context())
+        self.assertTrue(notes)
+        self.assertTrue(any('catalog meals' in note.lower() for note in notes))
+        with patch.dict(os.environ, {'LLM_BASE_URL': 'http://localhost:12345/v1', 'LLM_MODEL': 'test-model'}):
+            with patch('app.tacc.ask', side_effect=self.stage_answers()):
+                response = self.client.post('/api/workflows/plan', json={})
+        self.assertEqual(response.status_code, 503, response.text)
 
     def test_constraint_revision_retries_once_then_keeps_five_stages(self):
         ctx = agents.context()
@@ -353,16 +389,18 @@ class FitPilotTests(unittest.TestCase):
             ],
         }
         answers = [
-            json.dumps(agents.fallback('goal_planning', ctx)),
+            json.dumps({'summary': agents.fallback('goal_planning', ctx)['summary'], 'priorities': agents.fallback('goal_planning', ctx)['priorities']}),
             json.dumps(bad_exercise),
             json.dumps(agents.fallback('exercise_planning', ctx)),
             json.dumps({'menu_id': 'menu_1', 'summary': 'A revised catalog menu.'}),
             json.dumps(agents.fallback('exercise_feedback', ctx)),
             json.dumps(agents.fallback('evaluation_adaptation', ctx)),
         ]
-        with patch.dict(os.environ, {'LLM_BASE_URL': 'http://localhost:12345/v1'}):
+        with patch.dict(os.environ, {'LLM_BASE_URL': 'http://localhost:12345/v1', 'LLM_MODEL': 'test-model'}):
             with patch('app.tacc.ask', side_effect=answers) as ask:
-                draft = self.generate()
+                response = self.client.post('/api/workflows/plan', json={})
+        self.assertEqual(response.status_code, 200, response.text)
+        draft = response.json()
         self.assertEqual(ask.call_count, 6)
         self.assertEqual([step['agent_id'] for step in draft['steps']], [agent['id'] for agent in agents.AGENTS])
         self.assertEqual(len(draft['steps']), 5)

@@ -124,7 +124,13 @@ def plans() -> list[dict]:
 @app.post('/api/workflows/plan')
 @app.post('/api/plans/generate')
 def generate_plan() -> dict:
-    return agents.workflow_plan()
+    try:
+        return agents.workflow_plan()
+    except tacc.ModelUnavailable as exc:
+        raise HTTPException(
+            503,
+            str(exc) or 'TACC Qwen is configured but unreachable. Reconnect the model job and try Build my week again.',
+        ) from exc
 
 
 @app.post('/api/plans')
@@ -191,7 +197,13 @@ def list_tools() -> dict:
 
 @app.post('/api/orchestrator/chat')
 def orchestrator_chat(body: ChatRequest) -> dict:
-    result = orchestrator.run_orchestrator(body.message)
+    try:
+        result = orchestrator.run_orchestrator(body.message)
+    except tacc.ModelUnavailable as exc:
+        raise HTTPException(
+            503,
+            str(exc) or 'TACC Qwen is configured but unreachable. Reconnect the model job and try again.',
+        ) from exc
     db.execute('INSERT INTO chat_messages(role,text) VALUES(?,?)', ('user', body.message))
     db.execute(
         'INSERT INTO chat_messages(role,text,source) VALUES(?,?,?)',
@@ -202,7 +214,13 @@ def orchestrator_chat(body: ChatRequest) -> dict:
 
 @app.post('/api/orchestrator/plan')
 def orchestrator_plan() -> dict:
-    return orchestrator.orchestrate_plan()
+    try:
+        return orchestrator.orchestrate_plan()
+    except tacc.ModelUnavailable as exc:
+        raise HTTPException(
+            503,
+            str(exc) or 'TACC Qwen is configured but unreachable. Reconnect the model job and try again.',
+        ) from exc
 
 
 @app.get('/api/agent-runs')
@@ -217,7 +235,13 @@ def run_agent(agent_id: str, body: AgentRequest) -> dict:
         raise HTTPException(404, 'Unknown agent')
     if body.pose_session_id and not db.one('SELECT id FROM pose_sessions WHERE id=?', (body.pose_session_id,)):
         raise HTTPException(404, 'Pose session not found')
-    return agents.run_agent(agent_id, agents.context(body.pose_session_id), body.message)
+    try:
+        return agents.run_agent(agent_id, agents.context(body.pose_session_id), body.message)
+    except tacc.ModelUnavailable as exc:
+        raise HTTPException(
+            503,
+            str(exc) or 'TACC Qwen is configured but unreachable. Reconnect the model job and try again.',
+        ) from exc
 
 
 @app.post('/api/pose-sessions')
@@ -249,50 +273,31 @@ def chat_messages() -> list[dict]:
     return db.rows('SELECT * FROM (SELECT * FROM chat_messages ORDER BY id DESC LIMIT 100) AS recent_messages ORDER BY id')
 
 
-def route_message(message: str) -> str:
-    text = message.lower()
-    if any(word in text for word in ['meal', 'food', 'diet', 'nutrition', 'protein', 'budget', 'eat']):
-        return 'nutrition'
-    if any(word in text for word in ['pose', 'form', 'rep', 'camera', 'curl', 'squat']):
-        return 'exercise_feedback'
-    if any(word in text for word in ['progress', 'adapt', 'evaluate', 'effort', 'replan']):
-        return 'evaluation_adaptation'
-    if any(word in text for word in ['workout', 'exercise', 'schedule', 'train']):
-        return 'exercise_planning'
-    return 'goal_planning'
-
-
 @app.post('/api/assistant/chat')
 def assistant_chat(body: ChatRequest) -> dict:
     db.execute('INSERT INTO chat_messages(role,text) VALUES(?,?)', ('user', body.message))
-    # Explicit specialist override keeps the Coaching Team / debug path.
-    if body.agent_id:
-        if body.agent_id not in agents.MODELS:
-            raise HTTPException(404, 'Unknown agent')
-        run = agents.run_agent(body.agent_id, agents.context(), body.message)
-        output = run['output']
-        pieces = [output['summary']]
-        for key in ['priorities', 'suggestions', 'recommendations', 'notes']:
-            if output.get(key):
-                pieces.extend(output[key][:3])
-        answer = '\n\n'.join(pieces)
-        db.execute('INSERT INTO chat_messages(role,text,source,agent_run_id) VALUES(?,?,?,?)', ('assistant', answer, run['source'], run['id']))
-        return {'answer': answer, 'source': run['source'], 'agent_id': body.agent_id, 'run_id': run['id'], 'tool_trace': []}
-    # Default coach chat uses the tool-calling orchestrator when a model is configured.
-    if tacc.configuration()['configured']:
+    try:
+        # Explicit specialist override keeps the Coaching Team / debug path.
+        if body.agent_id:
+            if body.agent_id not in agents.MODELS:
+                raise HTTPException(404, 'Unknown agent')
+            run = agents.run_agent(body.agent_id, agents.context(), body.message)
+            output = run['output']
+            pieces = [output['summary']]
+            for key in ['priorities', 'suggestions', 'recommendations', 'notes']:
+                if output.get(key):
+                    pieces.extend(output[key][:3])
+            answer = '\n\n'.join(pieces)
+            db.execute('INSERT INTO chat_messages(role,text,source,agent_run_id) VALUES(?,?,?,?)', ('assistant', answer, run['source'], run['id']))
+            return {'answer': answer, 'source': run['source'], 'agent_id': body.agent_id, 'run_id': run['id'], 'tool_trace': []}
         result = orchestrator.run_orchestrator(body.message)
         db.execute('INSERT INTO chat_messages(role,text,source) VALUES(?,?,?)', ('assistant', result['answer'], result['source']))
         return result
-    agent_id = route_message(body.message)
-    run = agents.run_agent(agent_id, agents.context(), body.message)
-    output = run['output']
-    pieces = [output['summary']]
-    for key in ['priorities', 'suggestions', 'recommendations', 'notes']:
-        if output.get(key):
-            pieces.extend(output[key][:3])
-    answer = '\n\n'.join(pieces)
-    db.execute('INSERT INTO chat_messages(role,text,source,agent_run_id) VALUES(?,?,?,?)', ('assistant', answer, run['source'], run['id']))
-    return {'answer': answer, 'source': run['source'], 'agent_id': agent_id, 'run_id': run['id'], 'tool_trace': []}
+    except tacc.ModelUnavailable as exc:
+        raise HTTPException(
+            503,
+            str(exc) or 'TACC Qwen is configured but unreachable. Reconnect the model job and try again.',
+        ) from exc
 
 
 # When built, the same server can host the SPA. Register API/docs routes first.

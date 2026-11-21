@@ -2,8 +2,9 @@
 
 Pipeline: goal → exercise → nutrition → feedback → evaluation. The coordinator
 owns order, shared state, clarification checks, one constraint revision per
-specialist, and deterministic validation before user approval. Model output is
-advisory; local fallback preserves a durable run record for every stage.
+specialist, and deterministic validation before user approval. Specialists
+require a configured model; failed runs are recorded without substituting
+deterministic agent answers.
 """
 from __future__ import annotations
 
@@ -383,7 +384,7 @@ def run_row(row: dict) -> dict:
     return row
 
 
-def fallback_reason(exc: Exception) -> str:
+def failure_reason(exc: Exception) -> str:
     if isinstance(exc, tacc.ModelUnavailable):
         return str(exc)[:240]
     if isinstance(exc, ValidationError):
@@ -396,7 +397,7 @@ def fallback_reason(exc: Exception) -> str:
         detail = str(exc)
     else:
         detail = 'invalid structured response'
-    return f'Local rules used: {detail}'[:240]
+    return f'Model output could not be used: {detail}'[:240]
 
 
 def constraint_failure(exc: Exception) -> bool:
@@ -523,11 +524,13 @@ def run_agent(agent_id: str, ctx: dict, message: str = '', workflow_id: Optional
             'pose_session_id': ctx['pose_session']['id'] if ctx.get('pose_session') else None,
         }), '{}'),
     )
-    source, error = tacc.configuration()['source'], None
+    source = tacc.configuration()['source']
     revision_note = ''
     try:
+        if not tacc.configuration()['configured']:
+            raise tacc.ModelUnavailable('Configure QWEN_BASE_URL or LLM_BASE_URL to run FitPilot agents.')
         if ctx.get('model_unavailable'):
-            raise tacc.ModelUnavailable('Model unavailable earlier in this workflow; local rules were used')
+            raise tacc.ModelUnavailable('Model unavailable earlier in this workflow')
         output = None
         for attempt in range(MAX_CONSTRAINT_REVISIONS + 1):
             try:
@@ -543,12 +546,15 @@ def run_agent(agent_id: str, ctx: dict, message: str = '', workflow_id: Optional
     except (tacc.ModelUnavailable, ValidationError, ValueError, TypeError, KeyError) as exc:
         if isinstance(exc, tacc.ModelUnavailable):
             ctx['model_unavailable'] = True
-        output = MODELS[agent_id].model_validate(fallback(agent_id, ctx)).model_dump()
-        source = 'local_fallback'
-        error = fallback_reason(exc)
+        detail = str(exc) if isinstance(exc, tacc.ModelUnavailable) else failure_reason(exc)
+        db.execute(
+            'UPDATE agent_runs SET status=?,source=?,output_json=?,error=?,completed_at=CURRENT_TIMESTAMP WHERE id=?',
+            ('failed', source, '{}', detail[:240], run_id),
+        )
+        raise tacc.ModelUnavailable(detail) from exc
     db.execute(
         'UPDATE agent_runs SET status=?,source=?,output_json=?,error=?,completed_at=CURRENT_TIMESTAMP WHERE id=?',
-        ('completed', source, db.json_dump(output), error, run_id),
+        ('completed', source, db.json_dump(output), None, run_id),
     )
     result = run_row(db.one('SELECT * FROM agent_runs WHERE id=?', (run_id,)))
     ctx['shared_state'][agent_id] = output

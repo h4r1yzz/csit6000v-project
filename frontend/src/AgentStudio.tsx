@@ -4,8 +4,8 @@ import { api } from './api'
 import type { Agent, AgentRun, PoseSession } from './types'
 
 export function sourceLabel(source: string) {
-  if (source === 'local_fallback' || source === 'offline' || source === 'local') return 'Local rules'
-  if (source === 'mixed') return 'LLM + local rules'
+  if (source === 'local_fallback' || source === 'offline' || source === 'local') return 'Legacy local'
+  if (source === 'mixed') return 'Mixed model sources'
   if (source === 'tacc_qwen') return 'TACC Qwen'
   if (source === 'llm') return 'LLM'
   return source.replace(/_/g, ' ')
@@ -71,7 +71,7 @@ export default function AgentStudio({ onGenerate, generating, configured, revisi
     setChecking(true)
     try {
       const status = await api.get<{ reachable?: boolean; connected?: boolean; status?: string; detail?: string; message?: string }>('/api/model/status')
-      setModelStatus(status.message || status.detail || ((status.reachable || status.connected || status.status === 'connected') ? 'Connection successful' : 'Model unavailable. Local rules remain available.'))
+      setModelStatus(status.message || status.detail || ((status.reachable || status.connected || status.status === 'connected') ? 'Connection successful' : 'Model unavailable. Reconnect TACC Qwen to continue.'))
     } catch (e) { setModelStatus(e instanceof Error ? e.message : 'Connection failed') }
     finally { setChecking(false) }
   }
@@ -97,7 +97,7 @@ export default function AgentStudio({ onGenerate, generating, configured, revisi
         <div className="approval-caption"><Check size={14}/>Draft → your approval → saved plan → progress for next time</div>
       </section>
 </details>
-      <details className="coach-disclosure"><summary>Connection settings <span>{configured ? 'Model configured' : 'Using local rules'}</span></summary>    <div className="agent-connection"><div><span className="status-orb"/><span>{configured ? 'LLM endpoint configured' : 'Local planning is available'}<small>{configured ? 'Each run shows whether the LLM or local rules produced its answer.' : 'Connect an LLM in the backend environment to use model reasoning.'}</small></span></div><button className="quiet-button" onClick={() => void checkModel()} disabled={checking}>{checking ? <LoaderCircle size={15} className="spin"/> : <RefreshCw size={15}/>}Test LLM connection</button>{modelStatus && <p role="status">{modelStatus}</p>}</div></details>
+      <details className="coach-disclosure"><summary>Connection settings <span>{configured ? 'Model configured' : 'Model required'}</span></summary>    <div className="agent-connection"><div><span className="status-orb"/><span>{configured ? 'LLM endpoint configured' : 'Connect TACC Qwen to plan and coach'}<small>{configured ? 'Planning and coaching use the configured model.' : 'Set QWEN_BASE_URL via scripts/dev.py --tacc-job, or configure LLM_BASE_URL.'}</small></span></div><button className="quiet-button" onClick={() => void checkModel()} disabled={checking}>{checking ? <LoaderCircle size={15} className="spin"/> : <RefreshCw size={15}/>}Test LLM connection</button>{modelStatus && <p role="status">{modelStatus}</p>}</div></details>
     </>}
   </div>
 }

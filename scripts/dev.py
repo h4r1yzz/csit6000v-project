@@ -97,7 +97,7 @@ def main() -> int:
             if tunnel and time.monotonic() >= next_job_check:
                 try:
                     if not job_running(args.tacc_job, sdk):
-                        print(f"TACC job {args.tacc_job} ended. FitPilot will use local rules.", file=sys.stderr)
+                        print(f"TACC job {args.tacc_job} ended. Planning and coaching need a live model connection.", file=sys.stderr)
                         stop(tunnel)
                 except RuntimeError as error:
                     print(f"{error} Closing the TACC connection and keeping FitPilot open.", file=sys.stderr)

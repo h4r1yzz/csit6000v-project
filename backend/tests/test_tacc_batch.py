@@ -132,8 +132,9 @@ class TaccBatchTests(unittest.TestCase):
                 failed = self.execute_batch(staged, env, '124')
                 self.assertEqual(failed.returncode, 1, failed.stderr)
                 report = self.read_report(userdir, '124')
-                self.assertEqual(report['status'], 'fallback')
-                self.assertEqual(report['workflow']['source'], 'local_fallback')
+                self.assertEqual(report['status'], 'failed')
+                self.assertIsNone(report['workflow'])
+                self.assertTrue(report.get('error'))
                 self.assertIn('RESULT_FILE=CSIT6000V-project-results/fitpilot-job-124.json', failed.stdout)
                 self.assertEqual(len(requests), 6)
         finally:

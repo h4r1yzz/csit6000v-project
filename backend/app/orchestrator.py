@@ -37,7 +37,9 @@ def _parse_arguments(raw: Any) -> dict[str, Any]:
 
 
 def run_orchestrator(message: str, *, ctx: Optional[dict] = None, max_rounds: int = MAX_TOOL_ROUNDS) -> dict[str, Any]:
-    """Bounded tool-calling loop. Falls back to a specialist when the model is unavailable."""
+    """Bounded tool-calling loop. Requires a configured, reachable model."""
+    if not tacc.configuration()['configured']:
+        raise tacc.ModelUnavailable('Configure QWEN_BASE_URL or LLM_BASE_URL to use the FitPilot coach.')
     context = ctx or agents.context()
     trace: list[dict[str, Any]] = []
     messages: list[dict[str, Any]] = [
@@ -52,11 +54,11 @@ def run_orchestrator(message: str, *, ctx: Optional[dict] = None, max_rounds: in
             }),
         },
     ]
+    if context.get('model_unavailable'):
+        raise tacc.ModelUnavailable('Model unavailable earlier in this workflow')
+    openai_tool_defs = tools.openai_tools()
+    source = tacc.configuration()['source']
     try:
-        if context.get('model_unavailable'):
-            raise tacc.ModelUnavailable('Model unavailable earlier in this workflow; local rules were used')
-        openai_tool_defs = tools.openai_tools()
-        source = tacc.configuration()['source']
         for _ in range(max(1, max_rounds)):
             reply = tacc.chat(messages, tools=openai_tool_defs, max_tokens=1800, agent_id='orchestrator')
             source = reply.get('source') or source
@@ -100,35 +102,9 @@ def run_orchestrator(message: str, *, ctx: Optional[dict] = None, max_rounds: in
             'tool_trace': trace,
             'requires_approval': False,
         }
-    except tacc.ModelUnavailable as exc:
+    except tacc.ModelUnavailable:
         context['model_unavailable'] = True
-        agent_id = _fallback_agent(message)
-        run = agents.run_agent(agent_id, context, message)
-        pieces = [run['output'].get('summary', '')]
-        for key in ['priorities', 'suggestions', 'recommendations', 'notes']:
-            if run['output'].get(key):
-                pieces.extend(run['output'][key][:3])
-        return {
-            'answer': '\n\n'.join(piece for piece in pieces if piece),
-            'source': 'local_fallback',
-            'agent_id': agent_id,
-            'tool_trace': trace,
-            'error': str(exc)[:240],
-            'requires_approval': False,
-        }
-
-
-def _fallback_agent(message: str) -> str:
-    text = message.lower()
-    if any(word in text for word in ['meal', 'food', 'diet', 'nutrition', 'protein', 'budget', 'eat']):
-        return 'nutrition'
-    if any(word in text for word in ['pose', 'form', 'rep', 'camera', 'curl', 'squat']):
-        return 'exercise_feedback'
-    if any(word in text for word in ['progress', 'adapt', 'evaluate', 'effort', 'replan']):
-        return 'evaluation_adaptation'
-    if any(word in text for word in ['workout', 'exercise', 'schedule', 'train']):
-        return 'exercise_planning'
-    return 'goal_planning'
+        raise
 
 
 def orchestrate_plan() -> dict[str, Any]:

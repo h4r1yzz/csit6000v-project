@@ -2,7 +2,7 @@
 
 FitPilot is a fitness planning app built for CSIT6000V. Its React dashboard tracks exercise pose in the browser. The FastAPI backend coordinates five planning and feedback agents and stores profiles, plans, and progress in PostgreSQL. Live agent requests use TACC Qwen or a compatible model endpoint.
 
-[Public GitHub repository](https://github.com/h4r1yzz/csit6000v-project) · [Pinned grading revision](https://github.com/h4r1yzz/csit6000v-project/tree/grading-submission-2026-11-21-v3)
+[Pinned grading revision](https://github.com/h4r1yzz/csit6000v-project/tree/grading-submission-2026-11-21-v4) · [Public GitHub repository](https://github.com/h4r1yzz/csit6000v-project)
 
 ## Getting Started Instructions
 
@@ -15,7 +15,7 @@ FitPilot is a fitness planning app built for CSIT6000V. Its React dashboard trac
 ### Install and configure
 
 ```bash
-git clone --branch grading-submission-2026-11-21-v3 \
+git clone --branch grading-submission-2026-11-21-v4 \
   https://github.com/h4r1yzz/csit6000v-project.git
 cd csit6000v-project
 python3.11 -m venv backend/.venv
@@ -107,6 +107,8 @@ backend/.venv/bin/python scripts/summarize_evaluation.py \
 ```
 
 The full run produces 180 planning trials and 90 adaptation trials with three repeats per case and method. The runner uses UTC, a temperature of 0.2, and four concurrent workers in the commands above. Allow for GPU scheduling and the course job's one-hour limit. If the job expires, stop the run, reconnect to a new service and add `--resume` to the interrupted command with the same arguments and output path. Use a new output directory for a complete rerun if the checkpoint contains outage failures.
+
+The [reproducibility guide](docs/REPRODUCIBILITY.md) links the verification logs and evaluation evidence from a clean clone of the pinned grading revision. It distinguishes those results from the original recordings referenced in Tables 1–5.
 
 ### Results and report references
 

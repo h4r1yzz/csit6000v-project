@@ -15,12 +15,12 @@ from reportlab.platypus import Flowable, PageBreak, Paragraph, SimpleDocTemplate
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / 'submission/FitPilot-Repository-Submission.pdf'
 REPO = 'https://github.com/h4r1yzz/csit6000v-project'
-REVISION = 'grading-submission-2026-11-21-v3'
+REVISION = 'grading-submission-2026-11-21-v4'
 REVISION_URL = f'{REPO}/tree/{REVISION}'
 MEMBERS = (
-    ('Harry Chandra Tsjan', '21340623'),
-    ('Allabonu Sri Harsha Lakshman', '21344461'),
-    ('Nehanth Kasi Geetha', '21386988'),
+    ('Harry Chandra Tsjan', '21340623', 'Proposed the original project idea and built the pose estimation module.'),
+    ('Allabonu Sri Harsha Lakshman', '21344461', 'Tested the application and wrote project documentation.'),
+    ('Nehanth Kasi Geetha', '21386988', 'Designed the system architecture and agent workflow. Built the initial web app MVP.'),
 )
 
 INK = colors.HexColor('#172B35')
@@ -111,11 +111,12 @@ class CodeBlock(Flowable):
 class ContributionField(Flowable):
     spaceAfter = 12
 
-    def __init__(self, name: str, student_id: str):
+    def __init__(self, name: str, student_id: str, contribution: str):
         super().__init__()
         self.height = 81
         self.name = name
         self.student_id = student_id
+        self.contribution = contribution
 
     def wrap(self, available_width, available_height):
         self.width = available_width
@@ -131,7 +132,7 @@ class ContributionField(Flowable):
         canvas.drawRightString(self.width, 65, self.student_id)
         canvas.acroForm.textfield(
             name=f'contribution_{self.student_id}', tooltip=f'Contribution for {self.name}',
-            value='', x=0, y=0, width=self.width, height=55, relative=True,
+            value=self.contribution, x=0, y=0, width=self.width, height=55, relative=True,
             borderWidth=0.65, borderColor=RULE, fillColor=colors.white, textColor=INK,
             fontName='Helvetica', fontSize=10.5, fieldFlags='multiline doNotScroll', maxlen=350,
         )
@@ -231,8 +232,8 @@ def main() -> None:
         Paragraph('FitPilot', STYLES['cover_title']),
         Paragraph('GitHub repository submission', STYLES['cover_subtitle']),
         Paragraph('GitHub repository', STYLES['heading']),
-        Paragraph(link(REPO.removeprefix('https://'), REPO), STYLES['body']),
         Paragraph(f'Pinned revision · {link(REVISION, REVISION_URL)}', STYLES['body']),
+        Paragraph(link(REPO.removeprefix('https://'), REPO), STYLES['body']),
         Spacer(1, 12),
         Paragraph('Group contributions', STYLES['heading']),
         Spacer(1, 2),

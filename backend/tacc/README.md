@@ -43,14 +43,16 @@ If your SDK is already configured, use `tcloud ps` to check scheduler access. As
 
 ## 2. Register the public Project environment
 
-Get `project-release-1.zip` from the course. If you already have it in this checkout, its path is `Samples/project-release-1.zip`. The `Samples` directory is local and ignored by Git, so a fresh clone may need the course download.
+Run `tcloud env ls -n proxy`. If `proxy` is already registered for your course account, go to step 3. The FitPilot service job in this repository activates the shared course model runtime on TACC.
+
+If the environment is missing, get `project-release-1.zip` from the course Project materials. Set the archive path below to wherever you downloaded it. The archive is needed for initial course account setup.
 
 Create a new local work directory outside the repository for the extracted sample, staged job, and downloaded results. Keep these variables in the same Bash session.
 
 ```bash
 mkdir -p "$HOME/fitpilot-tacc"
 FITPILOT_TACC_RUN=$(mktemp -d "$HOME/fitpilot-tacc/run.XXXXXXXX")
-FITPILOT_COURSE_ZIP="$FITPILOT_ROOT/Samples/project-release-1.zip"
+FITPILOT_COURSE_ZIP='/absolute/path/to/project-release-1.zip'
 unzip -q "$FITPILOT_COURSE_ZIP" -d "$FITPILOT_TACC_RUN/course-sample"
 cd "$FITPILOT_TACC_RUN/course-sample/qwen27b-student-release"
 bash setup-sdk-account.sh

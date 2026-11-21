@@ -1,11 +1,17 @@
 import { useEffect, useState } from 'react'
-import App from './App'
+import App, { viewRoutes, type View } from './App'
 import AuthPage from './AuthPage'
 import LandingPage from './LandingPage'
 import { api, ApiError } from './api'
 
 type Account = { id: number; email: string; name: string }
 const sessionSignal = 'fitpilot-session-changed'
+const setupRoute = '#/preferences/setup'
+const todayRoute = '#/week/today'
+const routes = new Map<string, View>(Object.entries(viewRoutes).map(([view, route]) => [route, view as View]))
+routes.set(setupRoute, 'profile')
+routes.set(todayRoute, 'plan')
+routes.set('#/studio', 'tracker')
 
 function reloadAfterAuth(hash: string) {
   // Other tabs must discard the previous account's dashboard and drafts too.
@@ -54,9 +60,9 @@ export default function Root() {
   if (['#home', '#features', '#how-it-works', '#questions'].includes(route)) return <LandingPage/>
   if (error) return <main className="auth-page"><div className="auth-card"><p role="alert">{error}</p><button className="quiet-button" onClick={() => setAttempt(v => v + 1)}>Retry</button></div></main>
   if (account === undefined) return <main className="auth-page" role="status">Opening FitPilot…</main>
-  if (!account) return <AuthPage initialRegister={route !== '#/login'} onSuccess={registered => reloadAfterAuth(registered ? '#/preferences' : route === '#/login' ? '#/app' : route)}/>
-  const view = route === '#/studio' ? 'tracker' : route === '#/preferences' ? 'profile' : 'overview'
-  return <App key={account.id + '-' + view} initialView={view} onLogout={async () => {
+  if (!account) return <AuthPage initialRegister={route !== '#/login'} onSuccess={registered => reloadAfterAuth(registered ? setupRoute : route === '#/login' ? '#/app' : route)}/>
+  const view = routes.get(route) ?? 'overview'
+  return <App key={account.id} accountId={account.id} view={view} firstRun={route === setupRoute} focusToday={route === todayRoute} onLogout={async () => {
     await api.post('/api/auth/logout', {})
     reloadAfterAuth('#/login')
   }}/>

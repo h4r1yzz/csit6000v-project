@@ -1,20 +1,153 @@
-import { Activity, ArrowRight, CalendarDays, Check, CheckCircle2, Clock3, Heart, Salad, Sparkles, TrendingUp, XCircle } from 'lucide-react'
-import type { Plan } from './types'
+import { useEffect, useRef } from 'react'
+import { Activity, ArrowRight, CalendarDays, Check, Clock3, Heart, Salad, TrendingUp, XCircle } from 'lucide-react'
+import type { Plan, Validation } from './types'
 import { sourceLabel, WorkflowTrace } from './AgentStudio'
 
-export default function PlanView({ plan, draft, busy, onApprove, onDiscard }: { plan: Plan; draft?: boolean; busy?: boolean; onApprove?: () => void; onDiscard?: () => void }) {
+const checkLabels: Record<string, string> = {
+  schedule: 'Preferred days',
+  session_time: 'Time per workout',
+  equipment_and_catalog: 'Exercise and equipment fit',
+  diet_and_allergies: 'Food preferences and allergies',
+  catalog_nutrition_and_prices: 'Meal nutrition and prices',
+  weekly_servings: 'Weekly servings',
+  weekly_budget: 'Weekly food budget',
+}
+
+type Props = {
+  plan: Plan
+  draft: boolean
+  busy: boolean
+  stale: boolean
+  approving: boolean
+  focusDay?: string
+  onApprove: () => void
+  onDiscard: () => void
+  onRebuild: () => void
+}
+
+function ValidationChecks({ checks }: { checks: Validation['checks'] }) {
+  return <ul className="validation-grid plan-checks">
+    {checks.map(check => <li key={check.name} className={check.passed ? 'check-pass' : 'check-fail'}>
+      {check.passed ? <Check size={15}/> : <XCircle size={15}/>}
+      <span>
+        <strong>{checkLabels[check.name] ?? check.name.replace(/_/g, ' ')}</strong>
+        <small>{check.detail}</small>
+      </span>
+    </li>)}
+  </ul>
+}
+
+export default function PlanView({ plan, draft, busy, stale, approving, focusDay, onApprove, onDiscard, onRebuild }: Props) {
+  const focusedWorkout = useRef<HTMLElement>(null)
+  useEffect(() => {
+    if (!focusDay) return
+    focusedWorkout.current?.focus({ preventScroll: true })
+    focusedWorkout.current?.scrollIntoView({ block: 'start' })
+  }, [focusDay])
+
   const content = plan.content
-  const currency = content.budget_currency || 'USD'
-  const money = (value: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(value)
+  const money = (value: number) => new Intl.NumberFormat('en-US', {
+    style: 'currency', currency: content.budget_currency || 'USD',
+  }).format(value)
+  const invalid = plan.validation?.valid === false
+  const blocked = invalid || stale
+  const notes = plan.clarification ?? []
+
   return <div className="plan-layout">
-    {draft && <div className="plan-review-banner"><div className="review-icon"><Sparkles size={18}/></div><div><strong>A week to make your own.</strong><span>Your team made this draft from your saved preferences. Review it before activating.</span></div><span className="source-pill">{sourceLabel(plan.source)}</span></div>}
-    <div className="plan-summary content-card"><div className="plan-summary-copy"><span className="eyebrow">A FLEXIBLE STARTING POINT</span><h2>{plan.title || 'Your balanced week'}</h2><p>{content.summary}</p><div className="plan-meta"><span><CalendarDays size={14}/>{content.workouts.length} movement days</span><span><Clock3 size={14}/>{content.workouts.reduce((n, w) => n + w.duration_minutes, 0)} min total</span><span className="source-tag">{sourceLabel(plan.source)}</span></div></div><div className="plan-sun">✳</div></div>
-    {!!plan.clarification?.length && <section className="content-card validation-card"><div className="card-heading"><div><span className="eyebrow">COORDINATOR NEEDS CLARITY</span><h3>Update preferences before relying on this draft.</h3></div><XCircle size={21}/></div><div className="validation-grid">{plan.clarification.map((note, i) => <div key={i} className="check-fail"><XCircle size={15}/><span><strong>Clarification</strong><small>{note}</small></span></div>)}</div></section>}
-    {plan.validation && <section className="content-card validation-card"><div className="card-heading"><div><span className="eyebrow">CHECKED AGAINST YOUR PREFERENCES</span><h3>{plan.validation.valid ? 'Your constraints fit.' : 'A few things need attention.'}</h3></div>{plan.validation.valid ? <CheckCircle2 size={21}/> : <XCircle size={21}/>}</div><div className="validation-grid">{plan.validation.checks.map((check, i) => <div key={i} className={check.passed ? 'check-pass' : 'check-fail'}>{check.passed ? <Check size={15}/> : <XCircle size={15}/>}<span><strong>{check.name.replace(/_/g, ' ')}</strong><small>{check.detail}</small></span></div>)}</div></section>}
-    <section className="content-card schedule-card"><div className="card-heading"><div><span className="eyebrow">MOVEMENT, AT YOUR PACE</span><h3>Your workout rhythm</h3></div><span className="schedule-tag"><Activity size={13}/>{content.workouts.length} sessions</span></div><div className="workout-schedule">{content.workouts.map((workout, i) => <article className="workout-day" key={`${workout.day}-${i}`}><div className="workout-day-meta"><div className="workout-day-number">{String(i + 1).padStart(2, '0')}</div><span>{workout.day}</span></div><div className="workout-main"><strong>{workout.focus}</strong><span>{workout.duration_minutes} minutes · Choose a comfortable pace</span><div className="exercise-prescriptions">{workout.exercises.map((ex, j) => <div key={j}><strong>{ex.name}</strong><span>{ex.sets} sets × {ex.reps}{ex.rest_seconds != null ? ` · ${ex.rest_seconds}s rest` : ''}</span></div>)}</div></div><div className="workout-clock"><Clock3 size={14}/>{workout.duration_minutes}m</div></article>)}</div></section>
-    <section className="content-card meals-card"><div className="card-heading"><div><span className="eyebrow">FUEL FOR YOUR WEEK</span><h3>Simple meal inspiration</h3></div><div className="meal-icon"><Salad size={19}/></div></div>{content.estimated_weekly_cost != null && <p className="meal-budget">Estimated selection cost <strong>{money(content.estimated_weekly_cost)}</strong><span>Catalog estimates · selected weekly servings</span></p>}<div className="meal-grid">{content.meals.map((meal, i) => <div className="plan-meal" key={`${meal.name}-${i}`}><div className="meal-plate"><Salad size={18}/></div><div><strong>{meal.name}</strong><span>{meal.why}</span>{meal.calories != null && <span className="meal-nutrition">{meal.calories} kcal · {meal.protein_g}g protein / serving</span>}{meal.cost != null && <span>{money(meal.cost)} / serving · {meal.servings_per_week || 1} this week</span>}{meal.ingredients && <span className="meal-ingredients">{Array.isArray(meal.ingredients) ? meal.ingredients.join(', ') : meal.ingredients}</span>}</div><span className="meal-number">{String(i + 1).padStart(2, '0')}</span></div>)}</div>{!content.meals.length && <p className="runner-note">No catalog recipes meet your saved constraints. Review your preferences or expand the recipe catalog.</p>}</section>
-    {plan.steps?.length ? <section className="content-card"><div className="card-heading"><div><span className="eyebrow">HOW YOUR TEAM GOT HERE</span><h3>Planning steps</h3></div><span className="schedule-tag">Workflow #{plan.workflow_id}</span></div><WorkflowTrace runs={plan.steps}/></section> : null}
-    <div className="plan-notes"><div className="adapt-note"><TrendingUp size={18}/><span><strong>Room to adapt</strong>{content.adaptation_note}</span></div><div className="safety-note"><Heart size={18}/><span>{content.safety_note}</span></div></div>
-    {draft && <div className="plan-approval"><span><Check size={16}/>Ready when it feels right to you.</span><div><button className="quiet-button" disabled={busy} onClick={onDiscard}>Discard draft</button><button className="primary-button" disabled={busy || plan.validation?.valid === false} onClick={onApprove}>{busy ? 'Saving…' : 'Approve & save my week'}<ArrowRight size={15}/></button></div></div>}
+    {invalid && <section className="content-card week-problem" aria-labelledby="draft-problem">
+      <h2 id="draft-problem">This plan needs changes</h2>
+      <p>Some parts of this plan don’t fit your preferences.</p>
+      <ValidationChecks checks={plan.validation?.checks.filter(check => !check.passed) ?? []}/>
+      <a className="text-link" href="#/preferences">Edit preferences <ArrowRight size={15}/></a>
+    </section>}
+
+    <section className="plan-summary content-card">
+      <div className="plan-summary-copy">
+        {draft && <span className="eyebrow">DRAFT</span>}
+        <h2>{plan.title || 'Your weekly plan'}</h2>
+        <p>{content.summary}</p>
+        <div className="plan-meta">
+          <span><CalendarDays size={14}/>{content.workouts.length} workout days</span>
+          <span><Clock3 size={14}/>{content.workouts.reduce((n, workout) => n + workout.duration_minutes, 0)} min total</span>
+        </div>
+      </div>
+    </section>
+
+    {notes.length > 0 && <section className="content-card week-advice">
+      <h3>Suggestions for your preferences</h3>
+      <ul>{notes.map((note, i) => <li key={i}>{note}</li>)}</ul>
+      {!invalid && <a className="text-link" href="#/preferences">Edit preferences <ArrowRight size={15}/></a>}
+    </section>}
+
+    <section className="content-card schedule-card">
+      <div className="card-heading">
+        <h3>Workouts</h3>
+        <span className="schedule-tag"><Activity size={13}/>{content.workouts.length} sessions</span>
+      </div>
+      <div className="workout-schedule">
+        {content.workouts.map((workout, i) => {
+          const focused = focusDay === workout.day
+          return <article className={'workout-day' + (focused ? ' workout-day-focused' : '')} key={workout.day}
+            ref={focused ? focusedWorkout : undefined} tabIndex={focused ? -1 : undefined} aria-label={workout.day + ' workout'}>
+            <div className="workout-day-meta">
+              <div className="workout-day-number">{i + 1}</div><span>{workout.day}</span>
+            </div>
+            <div className="workout-main">
+              <strong>{workout.focus}</strong><span>{workout.duration_minutes} minutes</span>
+              <div className="exercise-prescriptions">{workout.exercises.map((exercise, j) => <div key={j}>
+                <strong>{exercise.name}</strong>
+                <span>{exercise.sets} sets × {exercise.reps}{exercise.rest_seconds != null ? ' · ' + exercise.rest_seconds + 's rest' : ''}</span>
+              </div>)}</div>
+            </div>
+          </article>
+        })}
+      </div>
+    </section>
+
+    <section className="content-card meals-card">
+      <div className="card-heading"><h3>Meal ideas</h3><div className="meal-icon"><Salad size={19}/></div></div>
+      {content.estimated_weekly_cost != null && <p className="meal-budget">
+        Estimated weekly cost <strong>{money(content.estimated_weekly_cost)}</strong><span>Catalog prices · selected servings</span>
+      </p>}
+      <div className="meal-grid">{content.meals.map((meal, i) => <div className="plan-meal" key={meal.name + '-' + i}>
+        <div className="meal-plate"><Salad size={18}/></div>
+        <div>
+          <strong>{meal.name}</strong><span>{meal.why}</span>
+          {meal.calories != null && <span className="meal-nutrition">{meal.calories} kcal · {meal.protein_g}g protein / serving</span>}
+          {meal.cost != null && <span>{money(meal.cost)} / serving · {meal.servings_per_week || 1} this week</span>}
+          {meal.ingredients && <span className="meal-ingredients">{Array.isArray(meal.ingredients) ? meal.ingredients.join(', ') : meal.ingredients}</span>}
+        </div>
+      </div>)}</div>
+      {!content.meals.length && <p className="runner-note">There are no meal ideas for these preferences.</p>}
+    </section>
+
+    <div className="plan-notes">
+      <div className="adapt-note"><TrendingUp size={18}/><span><strong>Adjusting your week</strong>{content.adaptation_note}</span></div>
+      <div className="safety-note"><Heart size={18}/><span>{content.safety_note}</span></div>
+    </div>
+
+    {plan.validation && <details className="content-card saved-plans validation-card">
+      <summary>Preference checks <span>{invalid ? 'Needs changes' : 'Passed'}</span></summary>
+      <ValidationChecks checks={plan.validation.checks}/>
+    </details>}
+    <details className="content-card saved-plans">
+      <summary>How this plan was built</summary>
+      <div className="plan-technical">
+        <span className="source-tag">{sourceLabel(plan.source)}</span>
+        {plan.workflow_id != null && <span className="schedule-tag">Workflow #{plan.workflow_id}</span>}
+        {plan.steps?.length ? <WorkflowTrace runs={plan.steps}/> : null}
+      </div>
+    </details>
+
+    {draft && <div className="plan-approval draft-actions">
+      <span>{blocked ? 'Build a valid draft before approving.' : 'Approve to make this your active week.'}</span>
+      <div>
+        <button className="quiet-button" disabled={busy} onClick={onDiscard}>Close draft</button>
+        {blocked && <button className="quiet-button" disabled={busy} onClick={onRebuild}>Build a new draft</button>}
+        <button className="primary-button" disabled={busy || blocked} onClick={onApprove}>
+          {approving ? 'Approving…' : 'Approve my week'} <ArrowRight size={15}/>
+        </button>
+      </div>
+    </div>}
   </div>
 }

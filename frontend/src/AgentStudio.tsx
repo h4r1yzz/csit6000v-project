@@ -36,7 +36,7 @@ export function WorkflowTrace({ runs }: { runs: AgentRun[] }) {
   return <div className="workflow-trace">{runs.map(run => <details key={run.id} className="trace-step"><summary><span className="trace-status">{run.status === 'completed' ? <CheckCircle2 size={16}/> : <XCircle size={16}/>}</span><strong>{label(run.agent_id)}</strong><span className="source-tag">{sourceLabel(run.source)}</span></summary><RunDetails run={run}/></details>)}</div>
 }
 
-export default function AgentStudio({ onGenerate, generating, configured, revision }: { onGenerate: () => void; generating: boolean; configured: boolean; revision: number }) {
+export default function AgentStudio({ revision }: { revision: number }) {
   const [agents, setAgents] = useState<Agent[]>([])
   const [runs, setRuns] = useState<AgentRun[]>([])
   const [sessions, setSessions] = useState<PoseSession[]>([])
@@ -47,8 +47,6 @@ export default function AgentStudio({ onGenerate, generating, configured, revisi
   const [running, setRunning] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [modelStatus, setModelStatus] = useState('')
-  const [checking, setChecking] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -67,28 +65,57 @@ export default function AgentStudio({ onGenerate, generating, configured, revisi
     } catch (e) { setError(e instanceof Error ? e.message : 'Agent could not complete the run') }
     finally { setRunning(false) }
   }
-  async function checkModel() {
-    setChecking(true)
-    try {
-      const status = await api.get<{ reachable?: boolean; connected?: boolean; status?: string; detail?: string; message?: string }>('/api/model/status')
-      setModelStatus(status.message || status.detail || ((status.reachable || status.connected || status.status === 'connected') ? 'Connection successful' : 'Model unavailable. Reconnect TACC Qwen to continue.'))
-    } catch (e) { setModelStatus(e instanceof Error ? e.message : 'Connection failed') }
-    finally { setChecking(false) }
-  }
+  const activeAgent = agents.find(agent => agent.id === selected)
+  const resultAgent = result ? agents.find(agent => agent.id === result.agent_id) : undefined
+  const specialistName = (agent: Agent) => agent.name.replace(/ Agent$/, '').replace('Evaluation and Adaptation', 'Adaptation')
+
   return <div className="page-content subpage coaching-page">
-    <section className="subpage-heading"><div><div className="date-eyebrow"><GitBranch size={15}/>YOUR COACHING TEAM</div><h1>Your coach<span className="title-dot">.</span></h1><p>Get help with your workouts, meals and progress.</p></div><button className="primary-button" disabled={generating || running} onClick={onGenerate}>{generating ? <LoaderCircle size={16} className="spin"/> : <Sparkles size={16}/>}Build my week</button></section>
+    <section className="advanced-heading">
+      <div><div className="date-eyebrow"><GitBranch size={14}/>REVIEWER TOOLS</div><h1>Advanced<span className="title-dot">.</span></h1><p>Test each specialist and inspect the recorded response.</p></div>
+      <span className="advanced-run-count">{runs.length} recorded runs</span>
+    </section>
 
     {error && <div className="inline-error" role="alert">{error}<button className="quiet-button" onClick={() => void load()}>Retry</button></div>}
     {loading ? <div className="loading-state"><LoaderCircle className="spin"/>Loading your team…</div> : <>
-      <div className={`agent-workspace ${!result && !running ? 'awaiting-question' : ''}`}><section className="content-card agent-runner"><div className="card-heading"><div><h3>What can we help with?</h3></div><Play size={18}/></div><form onSubmit={runAgent}>
-        <label className="field"><span>Choose a focus</span><select value={selected} onChange={e => { setSelected(e.target.value); setResult(null) }}>{agents.map(agent => <option key={agent.id} value={agent.id}>{agent.name.replace(/ Agent$/, '')}</option>)}</select></label>
-        <label className="field"><span>What would you like help with? <small>(optional)</small></span><textarea value={message} maxLength={1200} onChange={e => setMessage(e.target.value)} rows={3} placeholder="For example: help me make next week easier to stick to."/></label>
-        {selected === 'exercise_feedback' && <label className="field"><span>Movement session</span><select value={poseId} onChange={e => setPoseId(e.target.value)}><option value="">Use latest session, if available</option>{sessions.map(session => <option key={session.id} value={session.id}>#{session.id} · {session.exercise} · {session.reps} reps</option>)}</select><small>Uses measurements saved in Workout studio.</small></label>}
-        <p className="runner-note">Uses your saved preferences and recent progress. Changes to your weekly plan always need your approval.</p>
-        <button className="primary-button" type="submit" disabled={running || generating}>{running ? <LoaderCircle className="spin" size={16}/> : <Play size={15}/>} {running ? 'Preparing advice…' : 'Get advice'}</button>
-      </form></section>{(result || running) && <section className="content-card agent-response" aria-live="polite"><div className="card-heading"><div><h3>{result ? agents.find(a => a.id === result.agent_id)?.name : 'Your next insight'}</h3></div><Sparkles size={18}/></div>{result ? <RunDetails run={result}/> : <div className="agent-result-empty">{running ? <LoaderCircle className="spin" size={26}/> : <Sparkles size={26}/>}<strong>{running ? 'Looking at your context…' : 'A little guidance goes a long way.'}</strong><p>Using your preferences and recent activity.</p></div>}</section>}</div>
-      <details className="coach-disclosure"><summary>Previous advice <span>{runs.length} saved runs</span></summary>      <section className="content-card run-history"><div className="card-heading"><div><span className="eyebrow">A RECORD OF YOUR TEAMWORK</span><h3>Recent agent runs</h3></div><button className="text-link" onClick={() => void load()}><RefreshCw size={14}/>Refresh</button></div>{runs.length ? <div className="history-list">{runs.map(run => <details key={run.id}><summary><span className="history-icon"><Clock3 size={16}/></span><span><strong>{agents.find(a => a.id === run.agent_id)?.name || label(run.agent_id)}</strong><small>{new Date(run.created_at.replace(' ', 'T') + (/[Z+]|-\d\d:\d\d$/.test(run.created_at.slice(10)) ? '' : 'Z')).toLocaleString()}</small></span><span className="source-tag">{sourceLabel(run.source)}</span><span className={`run-status ${run.status === 'completed' ? 'result-pass' : ''}`}>{run.status}</span></summary><RunDetails run={run}/></details>)}</div> : <p className="runner-note">Your first run will appear here. Individual runs and coordinated planning steps are both recorded.</p>}</section></details>
-      <details className="coach-disclosure"><summary>How the coaching team works <span>Specialists and planning workflow</span></summary>      <section className="agent-map content-card" aria-label="Agent workflow">
+      <div className="specialist-tabs" role="tablist" aria-label="Choose a specialist">
+        {agents.map((agent, index) => <button type="button" role="tab" aria-selected={selected === agent.id} className={selected === agent.id ? 'selected' : ''} key={agent.id} onClick={() => { setSelected(agent.id); setResult(null) }}>
+          <span>{String(index + 1).padStart(2, '0')}</span>{specialistName(agent)}
+        </button>)}
+      </div>
+
+      <div className="command-grid">
+        <section className="content-card command-panel">
+          <div className="command-panel-heading"><div className="command-symbol"><Play size={16}/></div><div><span>COMMAND COMPOSER</span><h2>{activeAgent ? specialistName(activeAgent) : 'Choose a specialist'}</h2></div></div>
+          <p className="command-description">{activeAgent?.description}</p>
+          <form onSubmit={runAgent}>
+        <label className="field"><span>Additional context <small>(optional)</small></span><textarea value={message} maxLength={1200} onChange={e => setMessage(e.target.value)} rows={5} placeholder="Add a question or instruction for this run…"/></label>
+        {selected === 'exercise_feedback' && <label className="field"><span>Movement session</span><select value={poseId} onChange={e => setPoseId(e.target.value)}><option value="">Use latest session, if available</option>{sessions.map(session => <option key={session.id} value={session.id}>#{session.id} · {session.exercise} · {session.reps} reps</option>)}</select><small>Uses measurements saved in Workout.</small></label>}
+        <p className="runner-note">Uses your saved preferences and recent progress. It cannot activate a weekly plan.</p>
+        <button className="primary-button command-run" type="submit" disabled={running}>{running ? <LoaderCircle className="spin" size={16}/> : <Play size={15}/>} {running ? 'Running specialist…' : 'Run specialist'}</button>
+          </form>
+        </section>
+
+        <section className="content-card command-result" aria-live="polite">
+          <div className="result-heading"><div><span>LATEST RESPONSE</span><h2>{result ? resultAgent ? specialistName(resultAgent) : label(result.agent_id) : 'Ready for a new run'}</h2></div>{result && <span className={`run-status ${result.status === 'completed' ? 'result-pass' : ''}`}>{result.status}</span>}</div>
+          {result ? <RunDetails run={result}/> : <div className="command-empty">{running ? <LoaderCircle className="spin" size={28}/> : <Sparkles size={25}/>}<strong>{running ? 'Reviewing saved context…' : 'The response will appear here'}</strong><p>{running ? 'This can take a moment while the specialist works.' : 'Choose a specialist, add any context, and run it.'}</p></div>}
+        </section>
+      </div>
+
+      <section className="content-card audit-log">
+        <div className="audit-heading"><div><span>RUN HISTORY</span><h2>Recent specialist runs</h2></div><button className="text-link" onClick={() => void load()}><RefreshCw size={14}/>Refresh</button></div>
+        {runs.length ? <div className="audit-list">
+          <div className="audit-columns" aria-hidden="true"><span>Specialist</span><span>Status</span><span>Source</span><span>Time</span><span/></div>
+          {runs.map(run => <details key={run.id} className="audit-row"><summary>
+            <span className="audit-agent"><i><Clock3 size={14}/></i><strong>{agents.find(agent => agent.id === run.agent_id)?.name || label(run.agent_id)}</strong></span>
+            <span className={`run-status ${run.status === 'completed' ? 'result-pass' : ''}`}>{run.status}</span>
+            <span className="source-tag">{sourceLabel(run.source)}</span>
+            <time>{new Date(run.created_at.replace(' ', 'T') + (/[Z+]|-\d\d:\d\d$/.test(run.created_at.slice(10)) ? '' : 'Z')).toLocaleString()}</time>
+            <span className="audit-view">View</span>
+          </summary><RunDetails run={run}/></details>)}
+        </div> : <div className="audit-empty"><Clock3 size={18}/><span>Your first specialist run will appear here.</span></div>}
+      </section>
+
+      <details className="coach-disclosure architecture-disclosure"><summary>Architecture and workflow <span>Coordinator → specialists → review</span></summary><section className="agent-map content-card" aria-label="Agent workflow">
         <div className="coordinator-node"><div className="coordinator-icon"><GitBranch size={23}/></div><div><span className="eyebrow">THE BIG PICTURE</span><h2>Central coordinator</h2><p>Your profile + progress → shared context → a plan to review</p></div><span className="schedule-tag">{agents.length} specialists</span></div>
         <div className="flow-arrow"><ArrowDown size={18}/></div>
         <div className="agent-grid">{agents.filter(a => a.id !== 'evaluation_adaptation').map((agent, i) => <button className={`agent-node ${selected === agent.id ? 'selected' : ''}`} key={agent.id} onClick={() => { setSelected(agent.id); setResult(null) }}><span className={`agent-index agent-tint-${i}`}>{String(i + 1).padStart(2, '0')}</span><span><strong>{agent.name}</strong><small>{agent.description}</small></span><ArrowRight size={15}/></button>)}</div>
@@ -97,7 +124,6 @@ export default function AgentStudio({ onGenerate, generating, configured, revisi
         <div className="approval-caption"><Check size={14}/>Draft → your approval → saved plan → progress for next time</div>
       </section>
 </details>
-      <details className="coach-disclosure"><summary>Connection settings <span>{configured ? 'Model configured' : 'Model required'}</span></summary>    <div className="agent-connection"><div><span className="status-orb"/><span>{configured ? 'LLM endpoint configured' : 'Connect TACC Qwen to plan and coach'}<small>{configured ? 'Planning and coaching use the configured model.' : 'Set QWEN_BASE_URL via scripts/dev.py --tacc-job, or configure LLM_BASE_URL.'}</small></span></div><button className="quiet-button" onClick={() => void checkModel()} disabled={checking}>{checking ? <LoaderCircle size={15} className="spin"/> : <RefreshCw size={15}/>}Test LLM connection</button>{modelStatus && <p role="status">{modelStatus}</p>}</div></details>
     </>}
   </div>
 }

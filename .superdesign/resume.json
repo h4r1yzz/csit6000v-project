@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "targets": {
+    "/advanced": {
+      "targetKind": "existing-ui",
+      "projectId": "2d14919d-aee5-46ad-82ee-76f9457f0c90",
+      "baselineDraftId": "dba4707e-c367-4c2a-b472-c469971eaeb8",
+      "activeDraftId": "d56313da-7bf9-47bc-9a72-2b5406f02ad7",
+      "designSystemPath": ".superdesign/design-system.md",
+      "referenceIds": [
+        "990855ad-9980-4b64-a88b-35862d2e3d1b"
+      ],
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        "frontend/src/App.tsx",
+        "frontend/src/AgentStudio.tsx",
+        "frontend/src/styles.css",
+        "frontend/src/studio.css",
+        "frontend/src/workspace.css"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "2978a475bd04869a92459299f071b3ac10c06ad1cd2e11aa1abe353db966b985",
+        "frontend/src/App.tsx": "a902c37dadbaa154ae35d9c6425b2f118f709cc05abcf9fb8ae62e6cfeabc8cb",
+        "frontend/src/AgentStudio.tsx": "eba6a579877fef7c638cae70fbafb6176a7588c956f2600de131dbc75003da30",
+        "frontend/src/styles.css": "b398a357e2a897dfcb36df84bb814333d772876d6b31340577def7f49888a982",
+        "frontend/src/studio.css": "0291f53d85afc590da920978094772b62d100e8d386fbc0e71307452d543cd95",
+        "frontend/src/workspace.css": "5ba9ed233874740dd9bb2dab4066227a732428794a94892387baa6a7685d47c4"
+      },
+      "drafts": {
+        "dba4707e-c367-4c2a-b472-c469971eaeb8": {
+          "title": "Current Advanced Page",
+          "visualDirection": "faithful current UI baseline"
+        },
+        "b5f2a46a-707f-41ad-b88b-63fd796ae154": {
+          "title": "FitPilot Reviewer Console",
+          "visualDirection": "balanced split console with compact run history",
+          "parentDraftId": "dba4707e-c367-4c2a-b472-c469971eaeb8"
+        },
+        "d56313da-7bf9-47bc-9a72-2b5406f02ad7": {
+          "title": "FitPilot Reviewer Command Center",
+          "visualDirection": "workflow-first command center with specialist chips",
+          "parentDraftId": "dba4707e-c367-4c2a-b472-c469971eaeb8",
+          "currentVersion": 1
+        }
+      },
+      "updatedAt": "2026-11-21T18:33:00Z"
+    }
+  }
+}

@@ -230,3 +230,87 @@ details[open] > summary::after { content: '−'; }
   .chat-panel { width: 100%; } .app-footer { align-items: flex-start; padding-bottom: 70px; font-size: 10px; } .connection-pill { font-size: 0; } .connection-pill i { height: 7px; width: 7px; }
 }
 @media(prefers-reduced-motion:reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }
+
+.side-nav a,
+.home-page a,
+.week-page a { text-decoration: none; }
+
+.home-page .welcome-row { margin-bottom: 22px; }
+.home-metrics { margin-bottom: 18px; }
+.home-focus {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-height: 0;
+  margin-bottom: 18px;
+  background: #f1f5ec;
+}
+.home-focus .focus-icon { flex: none; align-self: flex-start; }
+.home-focus .focus-main { flex: 1; margin: 0; }
+.home-focus h2,
+.setup-card h2,
+.week-problem h2 { margin: 0; font-size: 20px; }
+.home-focus .focus-main > span:last-child { color: #515f4d; font-size: 13px; }
+.home-focus .primary-button { flex: none; }
+.home-week { margin-bottom: 18px; }
+.home-week .week-card { width: 100%; }
+.home-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+
+.empty-plan-illustration { position: relative; display: grid; place-items: center; }
+.empty-plan-brand { display: grid; place-items: center; color: #648b55; }
+.empty-plan-calendar { position: absolute; top: -7px; right: -7px; display: grid; place-items: center; width: 32px; height: 32px; border: 3px solid #fff; border-radius: 10px; background: #fff; color: #91aa78; }
+.empty-plan-brand svg, .empty-plan-calendar svg { position: static; }
+
+.setup-card, .week-problem { margin-bottom: 18px; }
+.setup-card p, .week-problem p, .week-advice li { color: #515f4d; line-height: 1.6; }
+.setup-card p { margin: 8px 0 16px; }
+.week-problem { border-color: #e4cbbb; background: #fdf8f3; }
+.week-problem p[role="alert"] { margin: 0 0 8px; }
+.week-problem details { margin-top: 12px; color: #515f4d; overflow-wrap: anywhere; }
+.week-problem details summary { cursor: pointer; }
+.week-advice h3 { margin: 0; }
+.week-advice ul { margin: 8px 0; padding-left: 20px; }
+.plan-layout .week-problem, .plan-layout .saved-plans { margin: 0; }
+.plan-checks { margin: 15px 0 0; padding: 0; list-style: none; }
+.week-problem .plan-checks { margin-bottom: 15px; }
+.plan-checks > li { display: flex; align-items: flex-start; gap: 9px; }
+.saved-plans > summary::before {
+  content: '';
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border: solid currentColor;
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(-45deg);
+}
+.saved-plans[open] > summary::before { transform: rotate(45deg); }
+.plan-technical { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px; }
+.plan-technical > .workflow-timeline { flex-basis: 100%; }
+.workout-day-focused { scroll-margin-top: 80px; outline: 2px solid #648756; outline-offset: 3px; }
+
+.plan-approval.draft-actions {
+  position: sticky;
+  bottom: calc(76px + env(safe-area-inset-bottom));
+  z-index: 5;
+  margin-top: 0;
+  padding: 12px 16px;
+  border: 1px solid #dce5d6;
+  border-radius: 12px;
+  background: #fbfcfa;
+  box-shadow: 0 6px 18px #2b412219;
+}
+.draft-actions > span { color: #435842; }
+.draft-actions .primary-button:disabled { opacity: .55; }
+
+@media (max-width: 950px) {
+  .home-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) {
+  .home-focus { flex-wrap: wrap; gap: 12px; }
+  .home-focus .focus-main { flex-basis: calc(100% - 56px); }
+  .home-focus .primary-button { width: 100%; }
+  .week-footer { flex-wrap: wrap; }
+  .plan-approval.draft-actions { bottom: calc(68px + env(safe-area-inset-bottom)); gap: 8px; padding: 10px 12px; }
+  .draft-actions > div { gap: 6px; }
+  .draft-actions .quiet-button { padding: 7px 10px; }
+}

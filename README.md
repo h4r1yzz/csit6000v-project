@@ -4,6 +4,8 @@ CSIT6000V course project: a personal fitness web app with a React UI, FastAPI mu
 
 Repository: https://github.com/h4r1yzz/csit6000v-project
 
+Pinned grading revision: [grading-submission-2026-11-21](https://github.com/h4r1yzz/csit6000v-project/tree/grading-submission-2026-11-21)
+
 ## Getting Started Instructions
 
 Use this section to install FitPilot and confirm basic functionality within about 30 minutes (excluding slow dependency downloads).
@@ -91,14 +93,14 @@ backend/.venv/bin/python scripts/verify.py
 | Pose unit tests | `node --test frontend/src/pose/analysis.test.mjs` | Pass |
 | API smoke | `backend/.venv/bin/python scripts/smoke.py` | `PASS: account -> five simulated model stages...` |
 
-Recorded run (2026-11-21, Asia/Hong_Kong; see `evaluation/results/verification.json`):
+Recorded run (2026-11-21, Python 3.11.18, local PostgreSQL; see `evaluation/results/verification.json`):
 
 - `frontend_build`: PASS
-- `backend_tests`: 38 passed, 28 PostgreSQL tests skipped, 0 failures (pre-Neon SQLite recording; re-run `scripts/verify.py` against Postgres to refresh)
+- `backend_tests`: 43 passed, 0 skipped, 0 failures
 - `pose_tests`: 17 passed
 - `api_smoke`: PASS
 
-Logs: `evaluation/results/*.log`. Current app/tests require Postgres. The checked-in recording above is the last deterministic run before the SQLite removal. **Not** live inference quality or real-video accuracy.
+Logs: `evaluation/results/*.log`. The verification run uses a disposable PostgreSQL schema and simulated model responses. It checks software integration and synthetic pose calculations, not live model quality or real-video accuracy.
 
 Validate evaluation case files without calling a model:
 
@@ -117,30 +119,39 @@ Expected: a `PASS` line confirming the planning or adaptation cases satisfy the 
 | Adaptation cases | `evaluation/adaptation_cases.json` | 10 constraint-change scenarios after an initial plan |
 | Smoke / verify runner | `scripts/smoke.py`, `scripts/verify.py` | Deterministic integration checks |
 | Live comparison runner | `scripts/evaluate.py` | Real model calls for planning/adaptation suites |
+| Live feedback checks | `scripts/evaluate_feedback.py` | Signed-in feedback endpoint with missing, low-confidence and clear synthetic pose summaries |
 | Recorded verify outputs | `evaluation/results/` | Logs + `verification.json` from the recorded deterministic run |
 | Default app config | `backend/.env.example` | Required `DATABASE_URL`, model URL, timeouts, timezone, CORS |
 
-Live evaluation (requires a reachable model in `backend/.env`):
+Live evaluation (requires a reachable model and `TEST_DATABASE_URL` or `DATABASE_URL` pointing to a disposable Postgres database):
 
 ```bash
-backend/.venv/bin/python scripts/evaluate.py --env-file backend/.env --limit 1 --repeats 1 --modes multi_agent --output evaluation/results/live-smoke.json
-backend/.venv/bin/python scripts/evaluate.py --env-file backend/.env --suite planning --repeats 3 --output evaluation/results/planning.json
-backend/.venv/bin/python scripts/evaluate.py --env-file backend/.env --suite adaptation --repeats 3 --output evaluation/results/adaptation.json
+export TEST_DATABASE_URL='postgresql://USER:PASSWORD@HOST/DATABASE?sslmode=require'
+export QWEN_BASE_URL='http://127.0.0.1:18000/v1' # example: a live endpoint or local TACC SSH tunnel
+export QWEN_MODEL='qwen3.8-27b'
+backend/.venv/bin/python scripts/evaluate.py --suite planning --repeats 3 --workers 4 --output evaluation/results/planning.json
+backend/.venv/bin/python scripts/evaluate.py --suite adaptation --repeats 3 --workers 4 --output evaluation/results/adaptation.json
+backend/.venv/bin/python scripts/summarize_evaluation.py --output evaluation/results/tables.md
 ```
 
-These commands consume model quota. Use new output filenames for reruns. Inspect the JSON metrics and errors; a successful process exit does not mean every case passed.
+The planning run makes 180 scenario attempts (20 cases × 3 methods × 3 repeats); adaptation makes 90. The checked-in live runs use TACC Qwen `qwen3.8-27b`. Planning results are assembled from per-method runs so the corrected generalist revision and explicit specialist-stage traces are retained. `planning.json` records each method's runner hash. The live runner checkpoints every attempt; add `--resume` with the same arguments after interruption. These commands consume model quota. A successful process exit means the experiment finished, not that every draft passed; inspect the raw outputs and generated tables.
+
+The recorded live planning results show 52/54 feasible drafts passing all checks for the five-specialist workflow, 52/54 completing all five specialist stages, and 6/6 infeasible cases correctly stopping at nutrition. The one-call and generalist-plus-revision baselines passed 0/54 feasible trials each and explicitly recognized 3/6 infeasible cases each. For adaptation, the specialist workflow passed 24/24 feasible cases and correctly rejected 6/6 infeasible cases. Tables 1–5 and the methodology are in [`docs/EVALUATION.md`](docs/EVALUATION.md); raw traces, latency, token and flow records are in `evaluation/results/`.
+
+`evaluate_feedback.py` also passed 3/3 live API cases using synthetic pose summaries. It checks missing measurements, a low-confidence summary and a clear-view summary, including the metrics returned to the model. No labeled workout video was supplied, so the repository makes no real-video pose-accuracy claim.
 
 ### Mapping to the project report
 
-Update the table numbers after the final report is fixed. Until then, claims are limited to what `evaluation/results/` already contains.
+The final course report was not present in the supplied checkout, so page numbers cannot be cross-referenced here. Cite the report-ready tables in [`docs/EVALUATION.md`](docs/EVALUATION.md) and map those table numbers into the final course report.
 
 | Claim / result in report | How to reproduce | Status in this artifact |
 | --- | --- | --- |
 | Implementation / integration checks | `scripts/verify.py` | Recorded in `evaluation/results/` |
-| Planning / constraint comparison | `evaluation/planning_cases.json` + `scripts/evaluate.py --suite planning` | Case files + runner included; live result JSON not shipped |
-| Adaptation comparison | `evaluation/adaptation_cases.json` + `scripts/evaluate.py --suite adaptation` | Case files + runner included; live result JSON not shipped |
-| Pose / cue accuracy on real video | Browser Form check protocol in `docs/POSE.md` | Not claimed here; synthetic pose unit tests only |
-| Latency / token / model-call tables | Live `evaluate.py` JSON + provider usage | Not shipped |
+| Planning / constraint comparison | `evaluation/planning_cases.json` + `scripts/evaluate.py --suite planning` | Tables 1, 3, 4, 5 in `docs/EVALUATION.md`; raw cases/traces in `evaluation/results/planning*.json` |
+| Adaptation comparison | `evaluation/adaptation_cases.json` + `scripts/evaluate.py --suite adaptation` | Tables 2, 3, 4, 5 in `docs/EVALUATION.md`; raw traces in `evaluation/results/adaptation.json` |
+| Pose feedback API behavior | `scripts/evaluate_feedback.py` | Three live synthetic-summary cases in `evaluation/results/feedback.json`; not a video-accuracy result |
+| Pose / cue accuracy on real video | Browser Form check protocol in `docs/POSE.md` | Not measured; no labeled workout clips were provided |
+| Latency / token / model-call tables | Live `evaluate.py` JSON + provider usage | Table 3 in `docs/EVALUATION.md` and `evaluation/results/tables.md` |
 
 ### Known limitations and expected variation
 
@@ -148,7 +159,7 @@ Update the table numbers after the final report is fixed. Until then, claims are
 - Graders need their own authorized TACC (or other model) access for live runs. Endpoint URL alone does not prove availability.
 - Simulated smoke/verify results are not model-quality or real-video accuracy measurements.
 - Live model text, exercise choices, latency, and token counts vary with provider version, GPU queue, network, and sampling. Use at least three repeats and report spread when claiming live results.
-- Exact generated wording is not expected to match across runs. No numerical acceptance tolerance is established for live comparison until those result files are included and cited in the report.
+- Exact generated wording is not expected to match across runs. Constraint pass rates and output/error counts are the primary metrics; timing and tokens are descriptive and vary with provider version, GPU queue, network, and sampling.
 - Neon/Postgres is required for the app and for smoke/verify. Deployment notes: `docs/DEPLOY-VERCEL.md`.
 
 ### Further documentation
@@ -157,6 +168,6 @@ Architecture, API, pose tracker, database, and deployment details: `docs/IMPLEME
 
 ## Group contributions
 
-- **Harry Chandra Tsjan (21340623):** PENDING
-- **Allabonu Sri Harsha Lakshman (21344461):** PENDING
-- **Nehanth Kasi Geetha (21386988):** PENDING
+- **Harry Chandra Tsjan (21340623):**
+- **Allabonu Sri Harsha Lakshman (21344461):**
+- **Nehanth Kasi Geetha (21386988):**

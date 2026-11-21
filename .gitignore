@@ -35,4 +35,6 @@ frontend/public/mediapipe/wasm/
 .neon
 
 # Local Canvas PDF (do not commit)
-submission/
+submission/*
+!submission/
+!submission/*.pdf

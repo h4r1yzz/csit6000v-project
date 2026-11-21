@@ -1,0 +1,144 @@
+{
+  "model": "qwen3.8-27b",
+  "cases": [
+    {
+      "case": "missing-session",
+      "input": null,
+      "passed": true,
+      "http": 200,
+      "result": {
+        "summary": "No specific exercise session or user question was provided for review. This response offers general guidance based on your profile to help you build strength and energy using your available equipment.",
+        "observations": [
+          "You are a beginner aiming to build strength and increase energy levels.",
+          "Your available equipment is limited to bodyweight and dumbbells.",
+          "You have a weekly budget of $70.00 and prefer high-protein meals.",
+          "No recent activity or specific questions were recorded in the context."
+        ],
+        "suggestions": [
+          "Consider starting with a simple routine using 'Squat', 'Incline push-up', and 'Glute bridge' to establish a strength foundation.",
+          "Incorporate 'Walking' for 10 minutes to boost cardiovascular health and energy levels.",
+          "For nutrition, 'Chicken rice power bowl' and 'Greek yogurt berry bowl' are excellent high-protein options that fit within your budget.",
+          "Ensure you are getting adequate rest between sessions to support muscle recovery and energy restoration."
+        ],
+        "confidence_note": "No measurements available.",
+        "metrics": {}
+      },
+      "model_calls": 1,
+      "usage_by_call": [
+        {
+          "prompt_tokens": 1430,
+          "total_tokens": 1705,
+          "completion_tokens": 275,
+          "prompt_tokens_details": null
+        }
+      ],
+      "elapsed_seconds": 5.78
+    },
+    {
+      "case": "low-visibility",
+      "input": {
+        "exercise": "Squat",
+        "reps": 4,
+        "average_confidence": 0.43,
+        "analyzed_frames": 145,
+        "range_of_motion": {
+          "min": 79,
+          "max": 171
+        },
+        "duration_seconds": 15,
+        "source": "upload",
+        "form_cues": []
+      },
+      "passed": true,
+      "http": 200,
+      "result": {
+        "summary": "The squat session shows a limited range of motion and low tracking confidence. As a beginner aiming to build strength, focusing on depth and stability is key. The current depth (79\u00b0 to 171\u00b0) suggests the hips are not sitting back fully, which may limit muscle engagement.",
+        "observations": [
+          "Range of motion (79\u00b0 to 171\u00b0) indicates the squat depth is shallow, likely not reaching parallel.",
+          "Average confidence is low (0.43), suggesting the camera angle or lighting may have made it difficult to track form accurately.",
+          "Only 4 reps were completed in 15 seconds, which is a reasonable pace for a beginner but could be improved with better depth."
+        ],
+        "suggestions": [
+          "Focus on sitting your hips back and down until your thighs are parallel to the floor, keeping your knees tracking over your toes.",
+          "Ensure your camera is positioned at hip height and perpendicular to your body to improve tracking confidence in future sessions.",
+          "Consider adding a Glute bridge to your routine to strengthen the posterior chain and improve squat depth."
+        ],
+        "confidence_note": "Low visibility: these measurements are unreliable. Reposition the camera before using the feedback.",
+        "metrics": {
+          "reps": 4,
+          "duration_seconds": 15.0,
+          "average_confidence": 0.43,
+          "range_of_motion": {
+            "min": 79.0,
+            "max": 171.0
+          },
+          "analyzed_frames": 145
+        }
+      },
+      "model_calls": 1,
+      "usage_by_call": [
+        {
+          "prompt_tokens": 1567,
+          "total_tokens": 1934,
+          "completion_tokens": 367,
+          "prompt_tokens_details": null
+        }
+      ],
+      "elapsed_seconds": 7.182
+    },
+    {
+      "case": "clear-view",
+      "input": {
+        "exercise": "Squat",
+        "reps": 4,
+        "average_confidence": 0.91,
+        "analyzed_frames": 145,
+        "range_of_motion": {
+          "min": 79,
+          "max": 171
+        },
+        "duration_seconds": 15,
+        "source": "upload",
+        "form_cues": []
+      },
+      "passed": true,
+      "http": 200,
+      "result": {
+        "summary": "The user performed 4 Squat repetitions over 15 seconds with a high average confidence of 0.91. The observed range of motion (79\u00b0 to 171\u00b0) indicates a deep squat depth, which is appropriate for a beginner aiming to build strength. No specific form cues were flagged, suggesting a generally stable execution.",
+        "observations": [
+          "The exercise performed was a Squat, which aligns with the user's goal of building strength and their available equipment (bodyweight).",
+          "The range of motion reached a minimum of 79 degrees, indicating a deep squat that engages the lower body effectively.",
+          "The session duration of 15 seconds for 4 reps suggests a controlled tempo, which is beneficial for beginners to maintain form.",
+          "The high average confidence (0.91) indicates that the pose estimation was reliable throughout the session."
+        ],
+        "suggestions": [
+          "Continue focusing on keeping the knees tracking over the toes and sitting hips back as per the standard Squat instructions to maintain joint health.",
+          "Consider adding a Glute Bridge to the routine to complement the Squat and further target the lower body, as both are beginner-friendly and use bodyweight.",
+          "To support the high-protein dietary preference, incorporate a meal like the Chicken rice power bowl (42g protein) or Greek yogurt berry bowl (28g protein) to aid muscle recovery after strength sessions.",
+          "Since the user is a beginner, ensure adequate rest between sets to prevent fatigue-related form breakdown, aiming for the 35-minute session limit to include warm-up and cool-down."
+        ],
+        "confidence_note": "The feedback is based on the provided pose session data with a high average confidence of 0.91. No video was viewed; analysis relies solely on the numerical metrics and metadata supplied.",
+        "metrics": {
+          "reps": 4,
+          "duration_seconds": 15.0,
+          "average_confidence": 0.91,
+          "range_of_motion": {
+            "min": 79.0,
+            "max": 171.0
+          },
+          "analyzed_frames": 145
+        }
+      },
+      "model_calls": 1,
+      "usage_by_call": [
+        {
+          "prompt_tokens": 1567,
+          "total_tokens": 2051,
+          "completion_tokens": 484,
+          "prompt_tokens_details": null
+        }
+      ],
+      "elapsed_seconds": 9.071
+    }
+  ]
+}

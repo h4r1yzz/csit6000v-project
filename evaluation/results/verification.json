@@ -1,9 +1,9 @@
 {
-  "timestamp_utc": "2026-11-21T03:47:32.413181+00:00",
-  "python": "3.12.2",
-  "platform": "macOS-15.6.1-arm64-arm-64bit",
-  "scope": "SQLite and simulated-model integration; no live model, real video or Postgres claims",
-  "base_commit": "b3a02f4882ca6a06af1620c8f419f4641c9b24f6",
+  "timestamp_utc": "2026-11-21T13:53:39.638670+00:00",
+  "python": "3.11.18",
+  "platform": "macOS-27.2.1-arm64-arm-64bit",
+  "scope": "Postgres + simulated-model / synthetic-landmark integration; no live model or real-video claims",
+  "base_commit": "f8b4b1e7cbb78bcc7fccfce4dd5f02a2e19227de",
   "working_tree_modified": true,
   "checks": [
     {
@@ -21,7 +21,7 @@
     {
       "name": "backend_tests",
       "command": [
-        "/Users/harry/AdvancedAiCsit6000V/csit6000v-project/backend/.venv/bin/python",
+        "/Users/nehanthkg/Desktop/CSIT6000V Fitness tracker/csit6000v-project/backend/.venv/bin/python",
         "-m",
         "unittest",
         "discover",
@@ -45,7 +45,7 @@
     {
       "name": "api_smoke",
       "command": [
-        "/Users/harry/AdvancedAiCsit6000V/csit6000v-project/backend/.venv/bin/python",
+        "/Users/nehanthkg/Desktop/CSIT6000V Fitness tracker/csit6000v-project/backend/.venv/bin/python",
         "scripts/smoke.py"
       ],
       "exit_code": 0,

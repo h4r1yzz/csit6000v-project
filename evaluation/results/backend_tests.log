@@ -1,3 +1,5 @@
+/Users/nehanthkg/Desktop/CSIT6000V Fitness tracker/csit6000v-project/backend/.venv/lib/python3.11/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
 test_private_recommendations_history_and_logout (test_accounts.AccountIsolationTest.test_private_recommendations_history_and_logout) ... ok
 test_allergen_phrases_and_equipment_negation (test_api.FitPilotTests.test_allergen_phrases_and_equipment_negation) ... ok
 test_bad_model_output_and_transport_failure_do_not_use_local_rules (test_api.FitPilotTests.test_bad_model_output_and_transport_failure_do_not_use_local_rules) ... ok
@@ -11,7 +13,6 @@ test_evaluator_detects_changed_active_constraints (test_api.FitPilotTests.test_e
 test_impossible_budget_cannot_replace_active_plan (test_api.FitPilotTests.test_impossible_budget_cannot_replace_active_plan) ... ok
 test_invalid_model_configuration_and_timeout_are_bounded (test_api.FitPilotTests.test_invalid_model_configuration_and_timeout_are_bounded) ... ok
 test_landmark_samples_validate_and_reach_feedback_context (test_api.FitPilotTests.test_landmark_samples_validate_and_reach_feedback_context) ... ok
-test_legacy_checkout_migration_preserves_user_data (test_api.FitPilotTests.test_legacy_checkout_migration_preserves_user_data) ... ok
 test_migration_is_additive_and_repeatable (test_api.FitPilotTests.test_migration_is_additive_and_repeatable) ... ok
 test_model_client_openai_compatible_request_contract (test_api.FitPilotTests.test_model_client_openai_compatible_request_contract) ... ok
 test_model_evaluation_cannot_suppress_required_adaptation (test_api.FitPilotTests.test_model_evaluation_cannot_suppress_required_adaptation) ... ok
@@ -30,42 +31,20 @@ test_api_persists_counts_and_feedback (test_bilateral_schema.BilateralSchemaTest
 test_legacy_summary_still_accepted (test_bilateral_schema.BilateralSchemaTests.test_legacy_summary_still_accepted) ... ok
 test_rejects_inconsistent_counts_and_thresholds (test_bilateral_schema.BilateralSchemaTests.test_rejects_inconsistent_counts_and_thresholds) ... ok
 test_roundtrip (test_bilateral_schema.BilateralSchemaTests.test_roundtrip) ... ok
+test_complete_specialist_flow_requires_all_five_stages_in_order (test_evaluation.EvaluationTests.test_complete_specialist_flow_requires_all_five_stages_in_order) ... ok
+test_feasible_case_abstention_gets_generalist_revision (test_evaluation.EvaluationTests.test_feasible_case_abstention_gets_generalist_revision) ... ok
+test_menu_abstention_requires_matching_reason_for_baselines (test_evaluation.EvaluationTests.test_menu_abstention_requires_matching_reason_for_baselines) ... ok
 test_missing_usage_stays_unknown (test_evaluation.EvaluationTests.test_missing_usage_stays_unknown) ... ok
 test_outage_is_not_successful_rejection_or_zero_tokens (test_evaluation.EvaluationTests.test_outage_is_not_successful_rejection_or_zero_tokens) ... ok
 test_revision_counts_all_calls_and_tokens (test_evaluation.EvaluationTests.test_revision_counts_all_calls_and_tokens) ... ok
 test_transport_preserves_provider_usage (test_evaluation.EvaluationTests.test_transport_preserves_provider_usage) ... ok
-test_allergen_phrases_and_equipment_negation (test_postgres.PostgresTests.test_allergen_phrases_and_equipment_negation) ... skipped 'Set TEST_DATABASE_URL to run Postgres integration tests'
-test_bad_model_output_and_transport_failure_do_not_use_local_rules (test_postgres.PostgresTests.test_bad_model_output_and_transport_failure_do_not_use_local_rules) ... skipped 'Set TEST_DATABASE_URL to run Postgres integration tests'
-test_bound_values_and_utc_timestamp (test_postgres.PostgresTests.test_bound_values_and_utc_timestamp) ... skipped 'Set TEST_DATABASE_URL to run Postgres integration tests'
-test_built_frontend_and_api_routes_are_served_together (test_postgres.PostgresTests.test_built_frontend_and_api_routes_are_served_together) ... skipped 'Set TEST_DATABASE_URL to run Postgres integration tests'
-test_catalog_prices_not_client_supplied_values (test_postgres.PostgresTests.test_catalog_prices_not_client_supplied_values) ... skipped 'Set TEST_DATABASE_URL to run Postgres integration tests'
-test_changed_constraints_and_tampered_draft_rejected (test_postgres.PostgresTests.test_changed_constraints_and_tampered_draft_rejected) ... skipped 'Set TEST_DATABASE_URL to run Postgres integration tests'
-test_constraint_revision_retries_once_then_keeps_five_stages (test_postgres.PostgresTests.test_constraint_revision_retries_once_then_keeps_five_stages) ... skipped 'Set TEST_DATABASE_URL to run Postgres integration tests'
-test_coordinator_persists_five_stages_and_requires_approval (test_postgres.PostgresTests.test_coordinator_persists_five_stages_and_requires_approval) ... skipped 'Set TEST_DATABASE_URL to run Postgres integration tests'
-test_coordinator_surfaces_clarification_for_unsupported_diet (test_postgres.PostgresTests.test_coordinator_surfaces_clarification_for_unsupported_diet) ... skipped 'Set TEST_DATABASE_URL to run Postgres integration tests'
-test_evaluator_detects_changed_active_constraints (test_postgres.PostgresTests.test_evaluator_detects_changed_active_constraints) ... skipped 'Set TEST_DATABASE_URL to run Postgres integration tests'
-test_impossible_budget_cannot_replace_active_plan (test_postgres.PostgresTests.test_impossible_budget_cannot_replace_active_plan) ... skipped 'Set TEST_DATABASE_URL to run Postgres integration tests'
-test_invalid_model_configuration_and_timeout_are_bounded (test_postgres.PostgresTests.test_invalid_model_configuration_and_timeout_are_bounded) ... skipped 'Set TEST_DATABASE_URL to run Postgres integration tests'
-test_landmark_samples_validate_and_reach_feedback_context (test_postgres.PostgresTests.test_landmark_samples_validate_and_reach_feedback_context) ... skipped 'Set TEST_DATABASE_URL to run Postgres integration tests'
-test_legacy_checkout_migration_preserves_user_data (test_postgres.PostgresTests.test_legacy_checkout_migration_preserves_user_data) ... skipped 'Set TEST_DATABASE_URL to run Postgres integration tests'
-test_migration_is_additive_and_repeatable (test_postgres.PostgresTests.test_migration_is_additive_and_repeatable) ... skipped 'Set TEST_DATABASE_URL to run Postgres integration tests'
-test_model_client_openai_compatible_request_contract (test_postgres.PostgresTests.test_model_client_openai_compatible_request_contract) ... skipped 'Set TEST_DATABASE_URL to run Postgres integration tests'
-test_model_evaluation_cannot_suppress_required_adaptation (test_postgres.PostgresTests.test_model_evaluation_cannot_suppress_required_adaptation) ... skipped 'Set TEST_DATABASE_URL to run Postgres integration tests'
-test_next_draft_reduces_volume_after_high_effort (test_postgres.PostgresTests.test_next_draft_reduces_volume_after_high_effort) ... skipped 'Set TEST_DATABASE_URL to run Postgres integration tests'
-test_orchestrator_tool_loop_then_answers (test_postgres.PostgresTests.test_orchestrator_tool_loop_then_answers) ... skipped 'Set TEST_DATABASE_URL to run Postgres integration tests'
-test_oversized_workout_and_unsupported_diet_cannot_be_approved (test_postgres.PostgresTests.test_oversized_workout_and_unsupported_diet_cannot_be_approved) ... skipped 'Set TEST_DATABASE_URL to run Postgres integration tests'
-test_pescatarian_catalog_excludes_chicken (test_postgres.PostgresTests.test_pescatarian_catalog_excludes_chicken) ... skipped 'Set TEST_DATABASE_URL to run Postgres integration tests'
-test_pose_summary_feedback_and_progress (test_postgres.PostgresTests.test_pose_summary_feedback_and_progress) ... skipped 'Set TEST_DATABASE_URL to run Postgres integration tests'
-test_schedule_diet_allergies_equipment_and_time_enforced (test_postgres.PostgresTests.test_schedule_diet_allergies_equipment_and_time_enforced) ... skipped 'Set TEST_DATABASE_URL to run Postgres integration tests'
-test_tools_registry_and_search (test_postgres.PostgresTests.test_tools_registry_and_search) ... skipped 'Set TEST_DATABASE_URL to run Postgres integration tests'
-test_transaction_rolls_back (test_postgres.PostgresTests.test_transaction_rolls_back) ... skipped 'Set TEST_DATABASE_URL to run Postgres integration tests'
-test_unconfigured_model_rejects_plan_generation (test_postgres.PostgresTests.test_unconfigured_model_rejects_plan_generation) ... skipped 'Set TEST_DATABASE_URL to run Postgres integration tests'
-test_valid_model_stages_are_used_and_source_is_truthful (test_postgres.PostgresTests.test_valid_model_stages_are_used_and_source_is_truthful) ... skipped 'Set TEST_DATABASE_URL to run Postgres integration tests'
-test_validation_errors_and_chat_requires_model (test_postgres.PostgresTests.test_validation_errors_and_chat_requires_model) ... skipped 'Set TEST_DATABASE_URL to run Postgres integration tests'
+test_unrelated_invalid_plan_does_not_get_rejection_credit (test_evaluation.EvaluationTests.test_unrelated_invalid_plan_does_not_get_rejection_credit) ... ok
+test_bound_values_and_utc_timestamp (test_postgres.PostgresTests.test_bound_values_and_utc_timestamp) ... ok
+test_transaction_rolls_back (test_postgres.PostgresTests.test_transaction_rolls_back) ... ok
 test_batch_calls_tacc_and_preserves_model_provenance_and_fallback (test_tacc_batch.TaccBatchTests.test_batch_calls_tacc_and_preserves_model_provenance_and_fallback) ... ok
 test_staging_only_copies_allowlisted_files_and_rejects_unsafe_inputs (test_tacc_batch.TaccBatchTests.test_staging_only_copies_allowlisted_files_and_rejects_unsafe_inputs) ... ok
 
 ----------------------------------------------------------------------
-Ran 66 tests in 5.906s
+Ran 43 tests in 10.233s
 
-OK (skipped=28)
+OK

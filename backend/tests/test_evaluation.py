@@ -60,3 +60,42 @@ class EvaluationTests(unittest.TestCase):
         with patch.object(tacc, 'urlopen', return_value=io.BytesIO(json.dumps(body).encode())):
             result = tacc.chat([{'role': 'user', 'content': 'test'}])
         self.assertEqual(result['usage'], self.good['usage'])
+
+    def test_unrelated_invalid_plan_does_not_get_rejection_credit(self):
+        ctx = deepcopy(self.ctx)
+        ctx['profile']['weekly_budget'] = 0
+        with patch.object(tacc, '_send_chat', return_value=self.good):
+            result = evaluate.run_case(ctx, 'single_call', 'reject')
+        self.assertEqual(result['outcome'], 'invalid_plan')
+        self.assertFalse(result['meets_expected_outcome'])
+
+    def test_menu_abstention_requires_matching_reason_for_baselines(self):
+        ctx = deepcopy(self.ctx)
+        ctx['profile']['weekly_budget'] = 0
+        for signal, expected in [('UNAFFORDABLE_MENU', True), ('NO_COMPATIBLE_MENU', False)]:
+            content = json.loads(self.good['content'])
+            content.update(summary=f'{signal}: a change is needed', meals=[], estimated_weekly_cost=0)
+            with patch.object(tacc, '_send_chat', return_value={**self.good,'content':json.dumps(content)}):
+                result = evaluate.run_case(ctx, 'single_call', 'reject')
+            self.assertEqual(result['meets_expected_outcome'], expected)
+
+    def test_feasible_case_abstention_gets_generalist_revision(self):
+        content = json.loads(self.good['content'])
+        content.update(summary='NO_COMPATIBLE_MENU', meals=[], estimated_weekly_cost=0)
+        abstention = {**self.good, 'content': json.dumps(content)}
+        with patch.object(tacc, '_send_chat', side_effect=[abstention, self.good]) as send:
+            result = evaluate.run_case(self.ctx, 'single_agent', 'valid_plan')
+        self.assertTrue(result['valid_plan'])
+        self.assertTrue(result['meets_expected_outcome'])
+        self.assertEqual(result['model_calls'], 2)
+        self.assertEqual(send.call_count, 2)
+
+    def test_complete_specialist_flow_requires_all_five_stages_in_order(self):
+        names = ['goal_planning', 'exercise_planning', 'nutrition', 'exercise_feedback', 'evaluation_adaptation']
+        steps = [{'agent_id': name, 'status': 'completed', 'source': 'tacc_qwen'} for name in names]
+        self.assertTrue(evaluate.workflow_stages_complete(steps))
+        self.assertFalse(evaluate.workflow_stages_complete(steps[:-1]))
+        self.assertFalse(evaluate.workflow_stages_complete(list(reversed(steps))))
+        failed = deepcopy(steps)
+        failed[2]['status'] = 'failed'
+        self.assertFalse(evaluate.workflow_stages_complete(failed))

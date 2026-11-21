@@ -29,7 +29,7 @@ flowchart TD
 
 The coordinator owns workflow order and shared context: clarify impossible or vague preferences, run goal → exercise → nutrition → feedback, validate the assembled draft, then run evaluation/adaptation. Each specialized agent has its own request, structured result, provenance, and persisted execution record. If a specialist response fails deterministic checks, the coordinator allows one targeted revision for that stage before failing the run. The evaluation stage checks the combined result against stored preferences before the user can activate a plan.
 
-Coach chat uses a tool-calling orchestrator (`app/orchestrator.py`) when a model is configured. Shared tools live in `app/tools.py`. Browser pose estimation is a separate computer vision pipeline; it does not ask a language model to inspect video.
+Coach chat uses a tool-calling orchestrator (`app/orchestrator.py`) when a model is configured. Shared tools live in `app/tools.py`. LLM system prompts are Markdown files under `app/prompts/` that use XML tags for structure (loaded by `app/prompts/loader.py`); user/data payloads stay JSON. Browser pose estimation is a separate computer vision pipeline; it does not ask a language model to inspect video.
 
 ## Agent responsibilities
 

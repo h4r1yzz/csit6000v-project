@@ -9,18 +9,9 @@ from __future__ import annotations
 import json
 from typing import Any, Optional
 
-from . import agents, tacc, tools
+from . import agents, prompts, tacc, tools
 
 MAX_TOOL_ROUNDS = 5
-
-ORCHESTRATOR_SYSTEM = (
-    "You are FitPilot's Central Orchestrator. "
-    'Use tools to inspect the profile, catalogs, progress, clarifications, and specialist outputs. '
-    'Treat recent questions as background. Prioritize the current request and saved profile constraints. '
-    'Prefer tools over guessing. Provide general wellness guidance only; never diagnose injuries. '
-    'Do not claim to have seen video. Do not tell the user a plan was saved unless they approved it in the UI. '
-    'When enough evidence is gathered, answer clearly in plain language for the user.'
-)
 
 
 def _parse_arguments(raw: Any) -> dict[str, Any]:
@@ -43,7 +34,7 @@ def run_orchestrator(message: str, *, ctx: Optional[dict] = None, max_rounds: in
     context = ctx or agents.context()
     trace: list[dict[str, Any]] = []
     messages: list[dict[str, Any]] = [
-        {'role': 'system', 'content': ORCHESTRATOR_SYSTEM},
+        {'role': 'system', 'content': prompts.render('orchestrator')},
         {
             'role': 'user',
             'content': json.dumps({

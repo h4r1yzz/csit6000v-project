@@ -38,8 +38,15 @@ class TaccBatchTests(unittest.TestCase):
             self.assertEqual(files, {
                 'run.py', 'job.sh', 'tuxiv.conf', 'server-url.txt',
                 'backend/app/__init__.py', 'backend/app/agents.py', 'backend/app/db.py',
-                'backend/app/schemas.py', 'backend/app/tacc.py', 'database/schema.sql',
-                'database/seed.sql',
+                'backend/app/schemas.py', 'backend/app/tacc.py',
+                'backend/app/prompts/__init__.py', 'backend/app/prompts/loader.py',
+                'backend/app/prompts/orchestrator.md', 'backend/app/prompts/specialist_base.md',
+                'backend/app/prompts/specialists/goal_planning.md',
+                'backend/app/prompts/specialists/exercise_planning.md',
+                'backend/app/prompts/specialists/nutrition.md',
+                'backend/app/prompts/specialists/exercise_feedback.md',
+                'backend/app/prompts/specialists/evaluation_adaptation.md',
+                'database/schema.sql', 'database/seed.sql',
             })
             self.assertEqual((staged / 'server-url.txt').read_text(), 'http://qwen-test-node:8000/v1\n')
             self.assertNotEqual(self.stage('http://different-node:8000/v1', staged).returncode, 0)

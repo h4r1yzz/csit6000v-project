@@ -2,7 +2,7 @@
 
 FitPilot is a fitness planning app built for CSIT6000V. Its React dashboard tracks exercise pose in the browser. The FastAPI backend coordinates five planning and feedback agents and stores profiles, plans, and progress in PostgreSQL. Live agent requests use TACC Qwen or a compatible model endpoint.
 
-[Public GitHub repository](https://github.com/h4r1yzz/csit6000v-project) · [Pinned grading revision](https://github.com/h4r1yzz/csit6000v-project/tree/grading-submission-2026-11-21-v2)
+[Public GitHub repository](https://github.com/h4r1yzz/csit6000v-project) · [Pinned grading revision](https://github.com/h4r1yzz/csit6000v-project/tree/grading-submission-2026-11-21-v3)
 
 ## Getting Started Instructions
 
@@ -15,7 +15,7 @@ FitPilot is a fitness planning app built for CSIT6000V. Its React dashboard trac
 ### Install and configure
 
 ```bash
-git clone --branch grading-submission-2026-11-21-v2 \
+git clone --branch grading-submission-2026-11-21-v3 \
   https://github.com/h4r1yzz/csit6000v-project.git
 cd csit6000v-project
 python3.11 -m venv backend/.venv
@@ -71,6 +71,12 @@ backend/.venv/bin/python scripts/verify.py --output "$RUN_DIR/verification.json"
 | Feedback | A missing session and two synthetic pose summaries in [the feedback runner](scripts/evaluate_feedback.py) | Returned metric consistency and a confidence note when measurements are absent or low confidence |
 
 The live comparison uses the same case inputs and final validator for the five specialists, a one-call generalist, and a generalist with one revision. The validator checks schedule, session time, exercise eligibility, dietary compatibility, catalog facts, weekly servings, and budget. The traces include model responses, specialist stage order and status, validation, latency, calls, and tokens. See the [scoring methodology](docs/EVALUATION.md).
+
+The [reviewer walkthrough](docs/EVALUATION-EXAMPLES.md) links test cases to live response excerpts, shows both successful and failed agent flows, and explains what the app stores. Run the two-turn chat demo with the same disposable PostgreSQL database. It simulates model replies and verifies that all four messages reload after login and all three model requests are recorded.
+
+```bash
+backend/.venv/bin/python scripts/demo_chat.py
+```
 
 ### Rebuild tables from the recorded runs
 

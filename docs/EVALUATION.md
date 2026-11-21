@@ -2,6 +2,8 @@
 
 FitPilot's central claim is that its coordinator can produce an approvable weekly workout and meal draft under explicit constraints. We measure completed drafts against a fixed rule set and measure the inference cost of producing them. Any between-method difference applies to the complete configurations described below.
 
+The [reviewer walkthrough](EVALUATION-EXAMPLES.md) shows individual inputs, live outputs, a revision failure, examples of prose that the metrics miss, and a replayable chat persistence demo.
+
 ## Cases and comparisons
 
 The planning suite includes 18 feasible synthetic profiles and two infeasible profiles. P19 has a zero meal budget. P20 requests halal meals, which the current catalog cannot certify. P01 and P07 resolve to the same equipment profile. These are scenario trials, and the case bank does not represent 20 independent people.

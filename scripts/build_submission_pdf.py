@@ -15,7 +15,7 @@ from reportlab.platypus import Flowable, PageBreak, Paragraph, SimpleDocTemplate
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / 'submission/FitPilot-Repository-Submission.pdf'
 REPO = 'https://github.com/h4r1yzz/csit6000v-project'
-REVISION = 'grading-submission-2026-11-21-v2'
+REVISION = 'grading-submission-2026-11-21-v3'
 REVISION_URL = f'{REPO}/tree/{REVISION}'
 MEMBERS = (
     ('Harry Chandra Tsjan', '21340623'),

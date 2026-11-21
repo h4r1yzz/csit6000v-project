@@ -11,16 +11,9 @@ Neon CLI writes `.env.local` (gitignored). Keep both strings server-only:
 
 Never prefix either name with `VITE_`. Never paste credentials into source files or chat. Vercel does not inherit local env files: add these variables through Vercel Project Settings → Environment Variables. Use the production branch for Production; a separate Neon branch for Preview/Development.
 
-## Existing SQLite records
+## Neon schema
 
-Before starting the API against an empty target, run from the repository root:
-
-```sh
-backend/.venv/bin/pip install -r backend/requirements.txt
-backend/.venv/bin/python scripts/migrate_to_neon.py --sqlite database/fitpilot.db
-```
-
-The script reads `.env.local`, uses the direct URL, and copies the source read-only in one transaction. It preserves IDs and references, advances identity sequences, and refuses to overwrite any nonempty destination. Test on an isolated Neon branch first. A fresh installation can skip the transfer: API startup creates the schema and sample catalogs idempotently.
+Apply `database/schema.postgres.sql` and `database/auth.sql` on a fresh Neon database (or Neon SQL Editor) before the first API traffic. A fresh install does not need a SQLite import: the app seeds sample catalogs on first use when tables are empty. Schema changes after go-live should be applied explicitly on Neon before deploying code that needs them.
 
 ## Vercel settings
 
@@ -31,7 +24,7 @@ The script reads `.env.local`, uses the direct URL, and copies the source read-o
 5. For planning and coaching, add `LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY` (if required), and `LLM_TIMEOUT_SECONDS` for a reachable model endpoint. Without one, model-dependent requests return HTTP 503. A localhost model URL on your computer is not reachable from Vercel.
 6. Deploy. Open `/api/health` and confirm `database: connected`.
 
-Apply `database/auth.sql` to provision the central account registry on an existing Neon deployment. The app role needs permission to create schemas for newly registered accounts. The existing SQLite import handles the standalone demo workspace. Browser accounts use separate Postgres schemas.
+The app role needs permission to create schemas for newly registered accounts. Browser accounts use separate Postgres schemas (`fitpilot_account_<id>`).
 
 ## Verify MediaPipe and persistence
 
@@ -62,4 +55,4 @@ References: [Vercel FastAPI](https://vercel.com/docs/frameworks/backend/fastapi)
 
 ## Database startup
 
-Vercel cold starts do not run schema creation or seeds. Provision Neon with the migration command above before the first deployment, and apply future schema changes explicitly before deploying code that needs them. Local development still initializes its database automatically.
+Vercel cold starts do not create the Neon schema. Provision Postgres with the SQL files above before the first deployment. Local development (SQLite, no `DATABASE_URL`) still initializes its database automatically.

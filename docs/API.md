@@ -52,7 +52,7 @@ Each specialist requires a configured model. A deterministic constraint failure 
 | POST | `/api/pose-sessions` | Save a movement summary; never accepts video. |
 | GET | `/api/assistant/messages` | Read persisted coach conversation messages. |
 | POST | `/api/assistant/chat` | Coach chat. With a configured model, uses the tool-calling orchestrator; pass `agent_id` to force one specialist. |
-| GET | `/api/tools` | List shared FitPilot tool schemas used by the orchestrator and MCP server. |
+| GET | `/api/tools` | List shared FitPilot tool schemas used by the orchestrator. |
 | POST | `/api/orchestrator/chat` | Run the tool-calling orchestrator explicitly. |
 | POST | `/api/orchestrator/plan` | Run the specialist plan workflow through the orchestrator API. |
 

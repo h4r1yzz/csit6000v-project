@@ -19,7 +19,7 @@ from .schemas import ProfileUpdate, WorkoutLog, PlanSave, PoseSession, AgentRequ
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Production schema is provisioned by the migration command, not cold starts.
+    # On Vercel, Neon schema is provisioned ahead of deploy; cold starts skip init.
     if not os.getenv("VERCEL"):
         db.initialize()
         auth.initialize_registry()
@@ -182,7 +182,7 @@ def agent_catalog() -> dict:
                 'Tool-calling coordinator for chat and planning. Clarifies constraints, can call FitPilot tools '
                 '(profile, catalogs, validation, specialists), runs goal → exercise → nutrition → feedback → '
                 'evaluation for plan drafts, allows one constraint revision per specialist, then validates '
-                'before user approval. The same tools are exposed over MCP.'
+                'before user approval.'
             ),
         },
         'agents': agents.AGENTS,

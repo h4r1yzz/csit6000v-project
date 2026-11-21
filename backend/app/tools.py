@@ -1,4 +1,4 @@
-"""Shared FitPilot tools for the LLM orchestrator and MCP server.
+"""Shared FitPilot tools for the LLM orchestrator.
 
 These wrap existing catalog/DB helpers. Tools are read-oriented except where noted;
 plan activation remains an explicit UI/API approval step.

@@ -29,7 +29,7 @@ flowchart TD
 
 The coordinator owns workflow order and shared context: clarify impossible or vague preferences, run goal → exercise → nutrition → feedback, validate the assembled draft, then run evaluation/adaptation. Each specialized agent has its own request, structured result, provenance, and persisted execution record. If a specialist response fails deterministic checks, the coordinator allows one targeted revision for that stage before failing the run. The evaluation stage checks the combined result against stored preferences before the user can activate a plan.
 
-Coach chat uses a tool-calling orchestrator (`app/orchestrator.py`) when a model is configured. Shared tools live in `app/tools.py` and are also exposed by `backend/mcp_server.py` over MCP stdio for Cursor or other MCP hosts. Browser pose estimation is a separate computer vision pipeline; it does not ask a language model to inspect video.
+Coach chat uses a tool-calling orchestrator (`app/orchestrator.py`) when a model is configured. Shared tools live in `app/tools.py`. Browser pose estimation is a separate computer vision pipeline; it does not ask a language model to inspect video.
 
 ## Agent responsibilities
 
@@ -81,7 +81,7 @@ The agents are application modules with explicit context passing and persisted e
 
 ## Privacy and scope
 
-- HTTP sessions select a private account workspace before the coordinator loads profile, preferences, progress and recent questions. The local MCP stdio process runs separately against the original standalone workspace.
+- HTTP sessions select a private account workspace before the coordinator loads profile, preferences, progress and recent questions.
 - Video frames and uploaded clips stay in browser memory; the API receives derived session summaries when the user saves them.
 - Saved profile details, catalog entries, plans, logs, agent inputs/outputs, and pose summaries are local database records. A pose summary can include up to eight numerical snapshots of 33 `{x,y,z,visibility}` landmarks.
 - When a live LLM is enabled, the backend sends relevant profile and activity context to that configured service. Do not enter sensitive information that should not leave the device.

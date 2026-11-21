@@ -1,4 +1,4 @@
-"""Tool-calling coordinator for FitPilot chat and MCP-aligned agent loops.
+"""Tool-calling coordinator for FitPilot chat.
 
 The specialist pipeline in agents.workflow_plan remains the plan generator.
 This orchestrator lets a model call shared tools (profile, catalogs, validation,

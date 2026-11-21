@@ -1,0 +1,73 @@
+{
+  "suites": {
+    "planning": {
+      "multi_agent": {
+        "feasible": "53/54",
+        "infeasible": "6/6",
+        "outcomes": {
+          "valid_plan": 53,
+          "menu_infeasible": 6,
+          "execution_error": 1
+        },
+        "median_seconds": 64.2,
+        "full_flow": 53
+      },
+      "single_call": {
+        "feasible": "0/54",
+        "infeasible": "3/6",
+        "outcomes": {
+          "menu_infeasible": 60
+        },
+        "median_seconds": 27.3,
+        "full_flow": 0
+      },
+      "single_agent": {
+        "feasible": "0/54",
+        "infeasible": "3/6",
+        "outcomes": {
+          "menu_infeasible": 56,
+          "invalid_plan": 4
+        },
+        "median_seconds": 51.1,
+        "full_flow": 0
+      }
+    },
+    "adaptation": {
+      "multi_agent": {
+        "feasible": "22/24",
+        "infeasible": "6/6",
+        "outcomes": {
+          "valid_plan": 22,
+          "menu_infeasible": 6,
+          "execution_error": 1,
+          "transport_error": 1
+        },
+        "median_seconds": 71.3,
+        "full_flow": 22
+      },
+      "single_call": {
+        "feasible": "1/24",
+        "infeasible": "3/6",
+        "outcomes": {
+          "menu_infeasible": 28,
+          "invalid_plan": 1,
+          "valid_plan": 1
+        },
+        "median_seconds": 24.7,
+        "full_flow": 0
+      },
+      "single_agent": {
+        "feasible": "4/24",
+        "infeasible": "3/6",
+        "outcomes": {
+          "menu_infeasible": 22,
+          "invalid_plan": 4,
+          "valid_plan": 4
+        },
+        "median_seconds": 47.3,
+        "full_flow": 0
+      }
+    }
+  },
+  "feedback_passed": 3
+}

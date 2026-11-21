@@ -1,0 +1,31 @@
+Starting FitPilot. UI: http://127.0.0.1:5173  API docs: http://127.0.0.1:8000/docs
+Press Ctrl+C to stop both services. Saved database records will be kept.
+Starting FitPilot. UI: http://127.0.0.1:5173  API docs: http://127.0.0.1:8000/docs
+Press Ctrl+C to stop local services. Neon/Postgres data is unchanged.
+npm notice run fitpilot-frontend@0.1.0 predev
+npm notice run node scripts/prepare-pose.mjs
+Prepared local MediaPipe runtime assets.
+npm notice run fitpilot-frontend@0.1.0 dev
+npm notice run vite --host 127.0.0.1 --port 5173 --strictPort
+INFO:     Will watch for changes in these directories: ['/private/tmp/fitpilot-full-eval.T3JgJd/source/backend']
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [27582] using WatchFiles
+
+  VITE v6.4.6  ready in 230 ms
+
+  ➜  Local:   http://127.0.0.1:5173/
+INFO:     Started server process [27607]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:51204 - "GET /api/health HTTP/1.1" 200 OK
+
+Stopping FitPilot services…
+11:44:45 PM [vite] Pre-transform error: The service is no longer running
+  Plugin: vite:esbuild
+  File: /private/tmp/fitpilot-full-eval.T3JgJd/source/frontend/src/main.tsx
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [27607]
+INFO:     Stopping reloader process [27582]
+PASS: Dashboard HTTP 200; FastAPI /api/health returned database connected.

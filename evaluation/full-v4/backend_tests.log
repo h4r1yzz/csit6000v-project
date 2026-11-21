@@ -1,0 +1,48 @@
+test_private_recommendations_history_and_logout (test_accounts.AccountIsolationTest.test_private_recommendations_history_and_logout) ... ok
+test_allergen_phrases_and_equipment_negation (test_api.FitPilotTests.test_allergen_phrases_and_equipment_negation) ... ok
+test_bad_model_output_and_transport_failure_do_not_use_local_rules (test_api.FitPilotTests.test_bad_model_output_and_transport_failure_do_not_use_local_rules) ... ok
+test_built_frontend_and_api_routes_are_served_together (test_api.FitPilotTests.test_built_frontend_and_api_routes_are_served_together) ... ok
+test_catalog_prices_not_client_supplied_values (test_api.FitPilotTests.test_catalog_prices_not_client_supplied_values) ... ok
+test_changed_constraints_and_tampered_draft_rejected (test_api.FitPilotTests.test_changed_constraints_and_tampered_draft_rejected) ... ok
+test_constraint_revision_retries_once_then_keeps_five_stages (test_api.FitPilotTests.test_constraint_revision_retries_once_then_keeps_five_stages) ... ok
+test_coordinator_persists_five_stages_and_requires_approval (test_api.FitPilotTests.test_coordinator_persists_five_stages_and_requires_approval) ... ok
+test_coordinator_surfaces_clarification_for_unsupported_diet (test_api.FitPilotTests.test_coordinator_surfaces_clarification_for_unsupported_diet) ... ok
+test_evaluator_detects_changed_active_constraints (test_api.FitPilotTests.test_evaluator_detects_changed_active_constraints) ... ok
+test_impossible_budget_cannot_replace_active_plan (test_api.FitPilotTests.test_impossible_budget_cannot_replace_active_plan) ... ok
+test_invalid_model_configuration_and_timeout_are_bounded (test_api.FitPilotTests.test_invalid_model_configuration_and_timeout_are_bounded) ... ok
+test_landmark_samples_validate_and_reach_feedback_context (test_api.FitPilotTests.test_landmark_samples_validate_and_reach_feedback_context) ... ok
+test_migration_is_additive_and_repeatable (test_api.FitPilotTests.test_migration_is_additive_and_repeatable) ... ok
+test_model_client_openai_compatible_request_contract (test_api.FitPilotTests.test_model_client_openai_compatible_request_contract) ... ok
+test_model_evaluation_cannot_suppress_required_adaptation (test_api.FitPilotTests.test_model_evaluation_cannot_suppress_required_adaptation) ... ok
+test_next_draft_reduces_volume_after_high_effort (test_api.FitPilotTests.test_next_draft_reduces_volume_after_high_effort) ... ok
+test_orchestrator_tool_loop_then_answers (test_api.FitPilotTests.test_orchestrator_tool_loop_then_answers) ... ok
+test_oversized_workout_and_unsupported_diet_cannot_be_approved (test_api.FitPilotTests.test_oversized_workout_and_unsupported_diet_cannot_be_approved) ... ok
+test_pescatarian_catalog_excludes_chicken (test_api.FitPilotTests.test_pescatarian_catalog_excludes_chicken) ... ok
+test_pose_summary_feedback_and_progress (test_api.FitPilotTests.test_pose_summary_feedback_and_progress) ... ok
+test_schedule_diet_allergies_equipment_and_time_enforced (test_api.FitPilotTests.test_schedule_diet_allergies_equipment_and_time_enforced) ... ok
+test_tools_registry_and_search (test_api.FitPilotTests.test_tools_registry_and_search) ... ok
+test_unconfigured_model_rejects_plan_generation (test_api.FitPilotTests.test_unconfigured_model_rejects_plan_generation) ... ok
+test_valid_model_stages_are_used_and_source_is_truthful (test_api.FitPilotTests.test_valid_model_stages_are_used_and_source_is_truthful) ... ok
+test_validation_errors_and_chat_requires_model (test_api.FitPilotTests.test_validation_errors_and_chat_requires_model) ... ok
+test_origin_check_expiry_and_credential_storage (test_auth_session.SessionBoundaryTest.test_origin_check_expiry_and_credential_storage) ... ok
+test_api_persists_counts_and_feedback (test_bilateral_schema.BilateralSchemaTests.test_api_persists_counts_and_feedback) ... ok
+test_legacy_summary_still_accepted (test_bilateral_schema.BilateralSchemaTests.test_legacy_summary_still_accepted) ... ok
+test_rejects_inconsistent_counts_and_thresholds (test_bilateral_schema.BilateralSchemaTests.test_rejects_inconsistent_counts_and_thresholds) ... ok
+test_roundtrip (test_bilateral_schema.BilateralSchemaTests.test_roundtrip) ... ok
+test_complete_specialist_flow_requires_all_five_stages_in_order (test_evaluation.EvaluationTests.test_complete_specialist_flow_requires_all_five_stages_in_order) ... ok
+test_feasible_case_abstention_gets_generalist_revision (test_evaluation.EvaluationTests.test_feasible_case_abstention_gets_generalist_revision) ... ok
+test_menu_abstention_requires_matching_reason_for_baselines (test_evaluation.EvaluationTests.test_menu_abstention_requires_matching_reason_for_baselines) ... ok
+test_missing_usage_stays_unknown (test_evaluation.EvaluationTests.test_missing_usage_stays_unknown) ... ok
+test_outage_is_not_successful_rejection_or_zero_tokens (test_evaluation.EvaluationTests.test_outage_is_not_successful_rejection_or_zero_tokens) ... ok
+test_revision_counts_all_calls_and_tokens (test_evaluation.EvaluationTests.test_revision_counts_all_calls_and_tokens) ... ok
+test_transport_preserves_provider_usage (test_evaluation.EvaluationTests.test_transport_preserves_provider_usage) ... ok
+test_unrelated_invalid_plan_does_not_get_rejection_credit (test_evaluation.EvaluationTests.test_unrelated_invalid_plan_does_not_get_rejection_credit) ... ok
+test_bound_values_and_utc_timestamp (test_postgres.PostgresTests.test_bound_values_and_utc_timestamp) ... ok
+test_transaction_rolls_back (test_postgres.PostgresTests.test_transaction_rolls_back) ... ok
+test_batch_calls_tacc_and_preserves_model_provenance_and_fallback (test_tacc_batch.TaccBatchTests.test_batch_calls_tacc_and_preserves_model_provenance_and_fallback) ... ok
+test_staging_only_copies_allowlisted_files_and_rejects_unsafe_inputs (test_tacc_batch.TaccBatchTests.test_staging_only_copies_allowlisted_files_and_rejects_unsafe_inputs) ... ok
+
+----------------------------------------------------------------------
+Ran 43 tests in 10.802s
+
+OK

@@ -1,0 +1,56 @@
+{
+  "timestamp_utc": "2026-11-21T15:42:05.597370+00:00",
+  "python": "3.11.18",
+  "platform": "macOS-27.2.1-arm64-arm-64bit",
+  "scope": "Postgres + simulated-model / synthetic-landmark integration; no live model or real-video claims",
+  "base_commit": "ca94084617e3458ce639b7074debfe9029af3eb9",
+  "working_tree_modified": false,
+  "checks": [
+    {
+      "name": "frontend_build",
+      "command": [
+        "npm",
+        "run",
+        "build",
+        "--prefix",
+        "frontend"
+      ],
+      "exit_code": 0,
+      "log": "frontend_build.log"
+    },
+    {
+      "name": "backend_tests",
+      "command": [
+        "/private/tmp/fitpilot-full-eval.T3JgJd/source/backend/.venv/bin/python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-v"
+      ],
+      "exit_code": 0,
+      "log": "backend_tests.log"
+    },
+    {
+      "name": "pose_tests",
+      "command": [
+        "node",
+        "--test",
+        "frontend/src/pose/analysis.test.mjs"
+      ],
+      "exit_code": 0,
+      "log": "pose_tests.log"
+    },
+    {
+      "name": "api_smoke",
+      "command": [
+        "/private/tmp/fitpilot-full-eval.T3JgJd/source/backend/.venv/bin/python",
+        "scripts/smoke.py"
+      ],
+      "exit_code": 0,
+      "log": "api_smoke.log"
+    }
+  ],
+  "passed": true
+}

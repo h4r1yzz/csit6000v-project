@@ -1,31 +1,57 @@
-# Verify the grading revision
+# Reproduce the FitPilot grading results
 
-Clone the [pinned grading source](https://github.com/h4r1yzz/csit6000v-project/tree/grading-submission-2026-11-21-v4) using the [README setup](../README.md#getting-started-instructions). The [clean run evidence](https://github.com/h4r1yzz/csit6000v-project/tree/grading-evidence-2026-11-21-v4/evaluation/clean-v4) contains the executed commit, tool versions, verification logs, and live run records. Evidence has a separate tag because adding generated files changes the source commit SHA. The recorded SHA can be compared with the grading tag's commit.
+The [final grading package](https://github.com/h4r1yzz/csit6000v-project/tree/grading-final) includes the app, evaluation inputs, instructions, and evidence. The evaluated source is [`ca94084617e3458ce639b7074debfe9029af3eb9`](https://github.com/h4r1yzz/csit6000v-project/tree/ca94084617e3458ce639b7074debfe9029af3eb9), also tagged `grading-submission-2026-11-21-v4`. The packaging commit adds evidence, the submission PDF, and a PostgreSQL Compose option. The runtime, case banks, and evaluation scripts match v4.
 
-## Verify your checkout and run
-
-From the pinned clone root, record the source identity and write new results to a directory outside the clone.
+From a Git checkout containing both tags, compare the application and experiment inputs directly. Expect no diff.
 
 ```bash
+git diff --exit-code grading-submission-2026-11-21-v4 grading-final \
+  -- backend/app backend/tacc/serve backend/requirements.txt backend/requirements-dev.txt \
+  database frontend evaluation/planning_cases.json evaluation/adaptation_cases.json \
+  scripts/dev.py scripts/tacc_connection.py scripts/verify.py scripts/smoke.py \
+  scripts/evaluate.py scripts/evaluate_feedback.py scripts/summarize_evaluation.py
+```
+
+## Run from the exact evaluated source
+
+```bash
+git clone --branch grading-submission-2026-11-21-v4 \
+  https://github.com/h4r1yzz/csit6000v-project.git fitpilot-v4
+cd fitpilot-v4
 git rev-parse HEAD
-git rev-parse 'grading-submission-2026-11-21-v4^{commit}'
 git status --porcelain
+```
+
+Expect `ca94084617e3458ce639b7074debfe9029af3eb9` and no status output. Install the dependencies and configure a disposable PostgreSQL database as described in [Getting Started](../README.md#getting-started-instructions). If you use the Compose database, start it from the final package and export that database URL in the v4 clone's shell. Write new logs and JSON outside the v4 clone.
+
+```bash
 RUN_DIR=$(mktemp -d)
 backend/.venv/bin/python scripts/verify.py --output "$RUN_DIR/verification.json"
 ```
 
-The SHAs should match and `git status --porcelain` should print nothing. `verification.json` records the exact commit and the working tree status at launch. The verification builds the frontend, runs all backend and pose tests, and exercises account registration, planning, approval, and readback with simulated model replies.
+The [new verification record](../evaluation/full-v4/verification.json) records the exact commit and clean tree. The [app launch log](../evaluation/full-v4/app-launch.log) checks that Vite serves the dashboard and FastAPI can reach PostgreSQL. With a reachable Qwen endpoint configured as in the README, `backend/.venv/bin/python scripts/smoke.py --live` checks all five live agent stages, approval, and plan readback through the signed-in API.
 
-With a reachable model and the configuration in [Rerun the live evaluation](../README.md#rerun-the-live-evaluation), run the live end-to-end example on a disposable test database.
+## Compare the evaluation records
+
+| Evidence | What it shows |
+| --- | --- |
+| [Original 270 trials](EVALUATION.md#recorded-live-results) | Initial live measurements, methodology, and Tables 1–5. Original metadata preserves the checkout's dirty-tree flag. |
+| [Clean replay of archived traces](../evaluation/clean-v4) | Replays the original responses against clean v4. All 270 model request bodies, scoring outcomes, and recorded flows matched. |
+| [Fresh full evaluation](../evaluation/full-v4) | Runs all 180 planning and 90 adaptation trials again with live TACC Qwen from clean v4. Includes feedback, raw traces, logs, regenerated tables, and environment provenance. |
+
+To regenerate the fresh tables from the final package, use this command from the package root. It reads the archived JSON and needs only Python.
 
 ```bash
-backend/.venv/bin/python scripts/smoke.py --live
+python3.11 scripts/summarize_evaluation.py \
+  --planning evaluation/full-v4/planning.json \
+  --adaptation evaluation/full-v4/adaptation.json
 ```
 
-A passing run prints `PASS: account -> five live model stages -> valid draft -> approval -> persisted active plan` and the configured model and provider. The live path uses Tuesday and Saturday workout sessions, the same schedule tested by planning case P02. It checks the order and provenance of all five stages and confirms that no draft becomes active until approval.
+The generated Markdown should match [the fresh Tables 1–5](../evaluation/full-v4/tables.md). To generate new live trials use the [live commands in the README](../README.md#rerun-the-live-evaluation). Compare feasible pass rates, explicit rejections, stage completion, and latency spread. The cases are synthetic, and model wording, timing, and per-case outcomes can vary.
 
-## Read the original and clean records
+If the serving job is close to its time limit, stop the evaluator after its latest checkpoint and connect to the replacement service. Keep the same case bank, repeat count, worker count, model name, and output path. For example, resume adaptation with the original `RUN_DIR` still set.
 
-[Tables 1–5](EVALUATION.md#recorded-live-results) describe the original 270 planning and adaptation trials. Their JSON metadata preserves the original base commit, dirty-tree flag, and evaluator hashes. The same case banks and validator apply to the clean run. Its evidence reports which cases and repeats were executed and how they scored. Treat differences as independent model outcomes under the documented configuration.
-
-The original specialist, revision, and adaptation recordings contain a SHA-256 matching the submitted `scripts/evaluate.py`. The original one-call planning records contain the earlier runner hash. The `working_tree_modified` flag covers the entire working tree, so the original metadata alone cannot establish a clean checkout. Use the clean run logs and exact source commit for that check.
+```bash
+backend/.venv/bin/python scripts/evaluate.py --suite adaptation \
+  --repeats 3 --workers 4 --output "$RUN_DIR/adaptation.json" --resume
+```

@@ -1,0 +1,117 @@
+{
+  "source_commit": "ca94084617e3458ce639b7074debfe9029af3eb9",
+  "working_tree_modified": false,
+  "started_utc": "2026-11-21T15:43:25.886106+00:00",
+  "model": "qwen3.8-27b",
+  "temperature": 0.2,
+  "workers": 4,
+  "repeats": 3,
+  "request_timeout_seconds": 90,
+  "transport": "OpenAI-compatible TACC vLLM via SSH",
+  "service_allocations": [
+    {
+      "job_id": "30418",
+      "connect_started_utc": "2026-11-21T15:43:25.886543+00:00",
+      "ready_utc": "2026-11-21T15:48:05.596590+00:00",
+      "vllm_version": "0.26.0"
+    },
+    {
+      "job_id": "30431",
+      "connect_started_utc": "2026-11-21T16:37:09.972255+00:00",
+      "ready_utc": "2026-11-21T16:42:39.754957+00:00",
+      "vllm_version": "0.26.0"
+    }
+  ],
+  "runs": [
+    {
+      "name": "planning",
+      "job_id": "30418",
+      "started_utc": "2026-11-21T15:48:10.257887+00:00",
+      "args": [
+        "scripts/evaluate.py",
+        "--suite",
+        "planning",
+        "--repeats",
+        "3",
+        "--workers",
+        "4",
+        "--output",
+        "planning.json"
+      ],
+      "finished_utc": "2026-11-21T16:23:48.395046+00:00",
+      "exit_code": 0,
+      "checkpoint_interrupted": false
+    },
+    {
+      "name": "adaptation",
+      "job_id": "30418",
+      "started_utc": "2026-11-21T16:23:50.591216+00:00",
+      "args": [
+        "scripts/evaluate.py",
+        "--suite",
+        "adaptation",
+        "--repeats",
+        "3",
+        "--workers",
+        "4",
+        "--output",
+        "adaptation.json"
+      ],
+      "finished_utc": "2026-11-21T16:36:34.404023+00:00",
+      "exit_code": -15,
+      "checkpoint_interrupted": true
+    },
+    {
+      "name": "adaptation",
+      "job_id": "30431",
+      "started_utc": "2026-11-21T16:42:44.414391+00:00",
+      "args": [
+        "scripts/evaluate.py",
+        "--suite",
+        "adaptation",
+        "--repeats",
+        "3",
+        "--workers",
+        "4",
+        "--output",
+        "adaptation.json",
+        "--resume"
+      ],
+      "supervisor_error": "The scheduler status request timed out after the last trial checkpoint was written.",
+      "completed_checkpoint_verified": true,
+      "checkpoint_verified_utc": "2026-11-21T17:00:56.080083+00:00"
+    },
+    {
+      "name": "adaptation-checkpoint-verification",
+      "job_id": "30431",
+      "started_utc": "2026-11-21T17:01:05.273755+00:00",
+      "finished_utc": "2026-11-21T17:01:05.783729+00:00",
+      "exit_code": 0,
+      "new_trials": 0
+    },
+    {
+      "name": "feedback",
+      "job_id": "30431",
+      "started_utc": "2026-11-21T17:01:05.991043+00:00",
+      "args": [
+        "scripts/evaluate_feedback.py",
+        "--output",
+        "feedback.json"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-11-21T17:01:38.677261+00:00"
+    },
+    {
+      "name": "live-smoke",
+      "job_id": "30431",
+      "started_utc": "2026-11-21T17:01:06.065257+00:00",
+      "args": [
+        "scripts/smoke.py",
+        "--live"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-11-21T17:01:53.683844+00:00"
+    }
+  ],
+  "finished_utc": "2026-11-21T17:01:53.719311+00:00"
+}

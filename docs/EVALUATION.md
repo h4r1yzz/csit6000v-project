@@ -2,7 +2,7 @@
 
 FitPilot's central claim is that its coordinator can produce an approvable weekly workout and meal draft under explicit constraints. We measure completed drafts against a fixed rule set and measure the inference cost of producing them. Any between-method difference applies to the complete configurations described below.
 
-The [reviewer walkthrough](EVALUATION-EXAMPLES.md) shows individual inputs, live outputs, a revision failure, examples of prose that the metrics miss, and a replayable chat persistence demo.
+The [reviewer walkthrough](EVALUATION-EXAMPLES.md) shows individual inputs, live outputs, a revision failure, examples of prose that the metrics miss, and a replayable chat persistence demo. The [fresh full run](../evaluation/full-v4) repeats all 270 live trials from the clean v4 source commit and compares its tables with the original recordings below.
 
 ## Cases and comparisons
 

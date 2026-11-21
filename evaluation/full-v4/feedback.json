@@ -1,0 +1,144 @@
+{
+  "model": "qwen3.8-27b",
+  "cases": [
+    {
+      "case": "missing-session",
+      "input": null,
+      "passed": true,
+      "http": 200,
+      "result": {
+        "summary": "No specific exercise session or user query was provided for analysis. This response provides a general overview of the available beginner-friendly exercise catalog and high-protein recipe options aligned with your goal of building strength and increasing energy.",
+        "observations": [
+          "The exercise catalog contains 8 beginner-level movements suitable for bodyweight and dumbbell training.",
+          "The recipe catalog offers 7 high-protein options with varying costs and dietary tags.",
+          "No recent activity or specific questions were recorded in the context."
+        ],
+        "suggestions": [
+          "Consider starting a session with 'Squat' and 'Incline push-up' to target major muscle groups for strength.",
+          "Incorporate 'Walking' for 10 minutes to support cardiovascular health and energy levels.",
+          "Pair workouts with 'Chicken rice power bowl' or 'Greek yogurt berry bowl' to meet high-protein dietary preferences."
+        ],
+        "confidence_note": "No measurements available.",
+        "metrics": {}
+      },
+      "model_calls": 1,
+      "usage_by_call": [
+        {
+          "prompt_tokens": 1430,
+          "total_tokens": 1710,
+          "completion_tokens": 280,
+          "prompt_tokens_details": null
+        }
+      ],
+      "elapsed_seconds": 8.45
+    },
+    {
+      "case": "low-visibility",
+      "input": {
+        "exercise": "Squat",
+        "reps": 4,
+        "average_confidence": 0.43,
+        "analyzed_frames": 145,
+        "range_of_motion": {
+          "min": 79,
+          "max": 171
+        },
+        "duration_seconds": 15,
+        "source": "upload",
+        "form_cues": []
+      },
+      "passed": true,
+      "http": 200,
+      "result": {
+        "summary": "The user performed 4 Squats with a moderate range of motion (79\u00b0 to 171\u00b0) over 15 seconds. The average confidence of the pose estimation was low (0.43), suggesting potential tracking issues or form inconsistencies. The session aligns with the user's beginner level and goal of building strength.",
+        "observations": [
+          "The range of motion for the Squat was 79\u00b0 to 171\u00b0, which indicates a partial to deep squat depending on the starting position.",
+          "The average confidence score of 0.43 is relatively low, which may indicate that the pose estimation model had difficulty tracking the user's movements accurately.",
+          "The user completed 4 reps in 15 seconds, which is a reasonable pace for a beginner focusing on form over speed.",
+          "The exercise performed (Squat) is appropriate for the user's goal of building strength and is available in the catalog with bodyweight and dumbbells."
+        ],
+        "suggestions": [
+          "Focus on maintaining a consistent and controlled pace during Squats to improve form and reduce the risk of injury.",
+          "Consider using a mirror or recording your form to visually check if your knees are tracking over your toes and your hips are sitting back as instructed.",
+          "If the low confidence score persists, try ensuring good lighting and a clear background to help the pose estimation model track your movements more accurately.",
+          "Incorporate other lower body exercises like Glute bridge or Standing calf raise to build overall lower body strength and balance."
+        ],
+        "confidence_note": "Low visibility: these measurements are unreliable. Reposition the camera before using the feedback.",
+        "metrics": {
+          "reps": 4,
+          "duration_seconds": 15.0,
+          "average_confidence": 0.43,
+          "range_of_motion": {
+            "min": 79.0,
+            "max": 171.0
+          },
+          "analyzed_frames": 145
+        }
+      },
+      "model_calls": 1,
+      "usage_by_call": [
+        {
+          "prompt_tokens": 1567,
+          "total_tokens": 2029,
+          "completion_tokens": 462,
+          "prompt_tokens_details": null
+        }
+      ],
+      "elapsed_seconds": 9.936
+    },
+    {
+      "case": "clear-view",
+      "input": {
+        "exercise": "Squat",
+        "reps": 4,
+        "average_confidence": 0.91,
+        "analyzed_frames": 145,
+        "range_of_motion": {
+          "min": 79,
+          "max": 171
+        },
+        "duration_seconds": 15,
+        "source": "upload",
+        "form_cues": []
+      },
+      "passed": true,
+      "http": 200,
+      "result": {
+        "summary": "You completed 4 bodyweight squats in 15 seconds with high tracking confidence (0.91). The recorded range of motion (79\u00b0 to 171\u00b0) indicates a deep squat depth, which is excellent for building lower body strength and aligns well with your goal of feeling more energetic.",
+        "observations": [
+          "The average confidence of 0.91 suggests the pose estimation tracked your movement clearly and consistently.",
+          "Your range of motion reached a minimum of 79\u00b0, indicating you achieved a deep squat depth, which is beneficial for glute and hamstring engagement.",
+          "The session duration of 15 seconds for 4 reps suggests a controlled, moderate pace, which is appropriate for a beginner focusing on form.",
+          "No specific form cues were flagged in the session data, suggesting the movement pattern was generally stable."
+        ],
+        "suggestions": [
+          "Continue focusing on keeping your knees tracking over your toes and sitting your hips back, as per the standard Squat instructions.",
+          "To build strength progressively, consider adding dumbbells to your squats once you feel confident with your bodyweight form, as you have dumbbells available.",
+          "Since your goal is to feel more energetic, consider pairing your lower body work with a short cardio session like Walking to boost overall energy levels.",
+          "For recovery and muscle repair, ensure you are consuming high-protein meals, such as the Chicken rice power bowl or Greek yogurt berry bowl, which fit your dietary preferences and budget."
+        ],
+        "confidence_note": "The feedback is based on the provided pose session metrics (reps, duration, range of motion, and confidence score). No video was viewed, and no specific form errors were detected in the data. The high confidence score supports the reliability of the quantitative metrics.",
+        "metrics": {
+          "reps": 4,
+          "duration_seconds": 15.0,
+          "average_confidence": 0.91,
+          "range_of_motion": {
+            "min": 79.0,
+            "max": 171.0
+          },
+          "analyzed_frames": 145
+        }
+      },
+      "model_calls": 1,
+      "usage_by_call": [
+        {
+          "prompt_tokens": 1567,
+          "total_tokens": 2033,
+          "completion_tokens": 466,
+          "prompt_tokens_details": null
+        }
+      ],
+      "elapsed_seconds": 13.422
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:17.12
+    environment:
+      POSTGRES_DB: fitpilot_artifact
+      POSTGRES_USER: fitpilot
+      POSTGRES_PASSWORD: fitpilot_dev
+    ports:
+      - '127.0.0.1:54327:5432'
+    volumes:
+      - fitpilot-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-h', '127.0.0.1', '-U', 'fitpilot', '-d', 'fitpilot_artifact']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  fitpilot-postgres:

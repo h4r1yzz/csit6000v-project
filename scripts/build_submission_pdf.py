@@ -15,12 +15,20 @@ from reportlab.platypus import Flowable, PageBreak, Paragraph, SimpleDocTemplate
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / 'submission/FitPilot-Repository-Submission.pdf'
 REPO = 'https://github.com/h4r1yzz/csit6000v-project'
-REVISION = 'grading-submission-2026-11-21-v4'
+REVISION = 'grading-final'
 REVISION_URL = f'{REPO}/tree/{REVISION}'
+SOURCE_SHA = 'ca94084617e3458ce639b7074debfe9029af3eb9'
+HISTORY = 'https://github.com/NehanthKG/CSIT6000V-fitness-tracker/commit'
 MEMBERS = (
-    ('Harry Chandra Tsjan', '21340623', 'Proposed the original project idea and built the pose estimation module.'),
-    ('Allabonu Sri Harsha Lakshman', '21344461', 'Tested the application and wrote project documentation.'),
-    ('Nehanth Kasi Geetha', '21386988', 'Designed the system architecture and agent workflow. Built the initial web app MVP.'),
+    ('Harry Chandra Tsjan', '21340623',
+     'Proposed the original project idea and built the pose estimation module.',
+     'Bilateral pose tracking commit', f'{HISTORY}/b3754ded95cd11b90e4872d0a35383a83d25e719'),
+    ('Allabonu Sri Harsha Lakshman', '21344461',
+     'Tested the application and wrote project documentation.',
+     'Test cases and evaluation walkthrough', 'docs/EVALUATION-EXAMPLES.md'),
+    ('Nehanth Kasi Geetha', '21386988',
+     'Designed the system architecture and agent workflow. Built the initial web app MVP.',
+     'FitPilot MVP commit', f'{HISTORY}/cfc5118452e2ef82ba10c1320069aad816bc9d4c'),
 )
 
 INK = colors.HexColor('#172B35')
@@ -44,6 +52,7 @@ STYLES = {
     'heading': style('heading', 13, 17, font='Helvetica-Bold', spaceBefore=12,
                      spaceAfter=5, keepWithNext=True),
     'body': style('body', 10.5, 14.3, spaceAfter=7),
+    'related_work': style('related_work', 9.2, 12.5, color=MUTED, spaceAfter=9),
     'bullet': style('bullet', 10.5, 14.3, leftIndent=13, bulletIndent=1, spaceAfter=4),
     'cell': style('cell', 10, 13.5),
     'table_head': style('table_head', 9.5, 13, font='Helvetica-Bold', color=TEAL),
@@ -53,7 +62,7 @@ TOKEN = re.compile(r'\[((?:`[^`]+`|[^\]])+)\]\(([^)]+)\)|`([^`]+)`|\*\*([^*]+)\*
 
 def link(label: str, target: str) -> str:
     if not urlsplit(target).scheme and not target.startswith('#'):
-        if target == 'evaluation/results':
+        if (ROOT / urlsplit(target).path).is_dir():
             target = f'{REVISION_URL}/{target}'
         else:
             target = f'{REPO}/blob/{REVISION}/{target}'
@@ -109,11 +118,11 @@ class CodeBlock(Flowable):
 
 
 class ContributionField(Flowable):
-    spaceAfter = 12
+    spaceAfter = 5
 
     def __init__(self, name: str, student_id: str, contribution: str):
         super().__init__()
-        self.height = 81
+        self.height = 65
         self.name = name
         self.student_id = student_id
         self.contribution = contribution
@@ -126,13 +135,13 @@ class ContributionField(Flowable):
         canvas = self.canv
         canvas.setFont('Helvetica-Bold', 11)
         canvas.setFillColor(INK)
-        canvas.drawString(0, 65, self.name)
+        canvas.drawString(0, 49, self.name)
         canvas.setFont('Helvetica', 10)
         canvas.setFillColor(MUTED)
-        canvas.drawRightString(self.width, 65, self.student_id)
+        canvas.drawRightString(self.width, 49, self.student_id)
         canvas.acroForm.textfield(
             name=f'contribution_{self.student_id}', tooltip=f'Contribution for {self.name}',
-            value=self.contribution, x=0, y=0, width=self.width, height=55, relative=True,
+            value=self.contribution, x=0, y=0, width=self.width, height=39, relative=True,
             borderWidth=0.65, borderColor=RULE, fillColor=colors.white, textColor=INK,
             fontName='Helvetica', fontSize=10.5, fieldFlags='multiline doNotScroll', maxlen=350,
         )
@@ -178,7 +187,7 @@ def render_readme(markdown: str) -> list:
                 level, title = heading.groups()
                 if len(lines) != 1:
                     raise ValueError(f'Add a blank line after heading: {title}')
-                if title in ('Detailed Instructions', 'Rerun the live evaluation', 'Results and report references'):
+                if title in ('Run the end-to-end smoke test', 'Results and report references'):
                     flow.append(PageBreak())
                 key = {'#': 'title', '##': 'section', '###': 'heading'}[level]
                 item = Paragraph(inline(title), STYLES[key])
@@ -232,17 +241,22 @@ def main() -> None:
         Paragraph('FitPilot', STYLES['cover_title']),
         Paragraph('GitHub repository submission', STYLES['cover_subtitle']),
         Paragraph('GitHub repository', STYLES['heading']),
-        Paragraph(f'Pinned revision · {link(REVISION, REVISION_URL)}', STYLES['body']),
+        Paragraph(link('Final grading package', REVISION_URL), STYLES['body']),
+        Paragraph(f'Evaluated source commit · {link(SOURCE_SHA, f"{REPO}/tree/{SOURCE_SHA}")}', STYLES['body']),
         Paragraph(link(REPO.removeprefix('https://'), REPO), STYLES['body']),
         Spacer(1, 12),
         Paragraph('Group contributions', STYLES['heading']),
         Spacer(1, 2),
-        *(ContributionField(*member) for member in MEMBERS),
-        Spacer(1, 10),
+    ]
+    for name, student_id, contribution, label, url in MEMBERS:
+        cover.append(ContributionField(name, student_id, contribution))
+        cover.append(Paragraph(link(label, url), STYLES['related_work']))
+    cover.extend([
+        Spacer(1, 7),
         Paragraph('Repository README', STYLES['heading']),
         Paragraph(link('Getting Started Instructions', '#getting-started-instructions'), STYLES['body']),
         Paragraph(link('Detailed Instructions', '#detailed-instructions'), STYLES['body']),
-    ]
+    ])
     doc.build([*cover, PageBreak(), *render_readme(readme)], onFirstPage=draw_page, onLaterPages=draw_page)
     print(OUTPUT)
 

@@ -1,0 +1,3 @@
+Docker Compose 5.8.0
+PASS: Compose configuration parsed successfully.
+The installation and launch checks used native PostgreSQL 17.12.

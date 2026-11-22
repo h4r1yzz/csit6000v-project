@@ -1,4 +1,4 @@
-"""Render the complete repository README and a fillable course submission cover."""
+"""Render the course artifact report and the complete repository README."""
 from __future__ import annotations
 
 import re
@@ -6,7 +6,10 @@ from html import escape
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from reportlab.graphics import renderSVG
+from reportlab.graphics.shapes import Drawing, Line, Polygon, Rect, String
 from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.pdfbase.pdfmetrics import stringWidth
@@ -15,49 +18,79 @@ from reportlab.platypus import Flowable, PageBreak, Paragraph, SimpleDocTemplate
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / 'submission/FitPilot-Repository-Submission.pdf'
 REPO = 'https://github.com/h4r1yzz/csit6000v-project'
-REVISION = 'grading-final'
+REVISION = 'grading-report'
 REVISION_URL = f'{REPO}/tree/{REVISION}'
+GRADING_URL = f'{REPO}/tree/grading-final'
 SOURCE_SHA = 'ca94084617e3458ce639b7074debfe9029af3eb9'
 HISTORY = 'https://github.com/NehanthKG/CSIT6000V-fitness-tracker/commit'
+ARCHITECTURE_PATH = 'docs/fitpilot-architecture.svg'
 MEMBERS = (
     ('Harry Chandra Tsjan', '21340623',
-     'Proposed the original project idea and built the pose estimation module.',
-     'Bilateral pose tracking commit', f'{HISTORY}/b3754ded95cd11b90e4872d0a35383a83d25e719'),
+     'Proposed FitPilot and designed its system architecture. Implemented the tool-calling coordinator and built the browser pose estimation module, including bilateral tracking and curl repetition counting.',
+     (('Coordinator implementation', f'{REPO}/commit/b7fe39a12170fa0ac6ea4e2e95ae85c239af5a61'),
+      ('Bilateral pose tracking', f'{HISTORY}/b3754ded95cd11b90e4872d0a35383a83d25e719'))),
     ('Allabonu Sri Harsha Lakshman', '21344461',
-     'Tested the application and wrote project documentation.',
-     'Test cases and evaluation walkthrough', 'docs/EVALUATION-EXAMPLES.md'),
+     'Tested FitPilot and prepared project documentation covering setup, verification, and evaluation.',
+     (('Shared test cases and reviewer walkthrough', 'docs/EVALUATION-EXAMPLES.md'),)),
     ('Nehanth Kasi Geetha', '21386988',
-     'Designed the system architecture and agent workflow. Built the initial web app MVP.',
-     'FitPilot MVP commit', f'{HISTORY}/cfc5118452e2ef82ba10c1320069aad816bc9d4c'),
+     'Built the initial React and FastAPI web app. Developed the planning agent workflow and TACC Qwen integration. Added account login and per-user model request history.',
+     (('Initial web app', f'{HISTORY}/cfc5118452e2ef82ba10c1320069aad816bc9d4c'),
+      ('TACC integration', f'{HISTORY}/7620f2997721bf9a080f14039777b54894ac3f19'),
+      ('Account and request history', f'{REPO}/commit/a1d9f56ba9f7eb30a1eac804f9c330ca362939c4'))),
 )
 
-INK = colors.HexColor('#172B35')
-MUTED = colors.HexColor('#485A62')
-TEAL = colors.HexColor('#116660')
-RULE = colors.HexColor('#CBD9D8')
-TINT = colors.HexColor('#F1F6F5')
+INK = colors.black
+LINK_BLUE = colors.HexColor('#17468A')
 MARGIN = 48
 
 
-def style(name, size, leading, *, font='Helvetica', color=INK, **kwargs):
-    return ParagraphStyle(name, fontName=font, fontSize=size, leading=leading, textColor=color, **kwargs)
+def style(name, size, leading, *, font='Times-Roman', **kwargs):
+    return ParagraphStyle(name, fontName=font, fontSize=size, leading=leading, textColor=INK, **kwargs)
 
 
 STYLES = {
-    'eyebrow': style('eyebrow', 9.5, 14, font='Helvetica-Bold', color=TEAL, spaceAfter=12),
-    'cover_title': style('cover_title', 54, 59, font='Times-Bold', spaceAfter=6),
-    'cover_subtitle': style('cover_subtitle', 19, 25, color=MUTED, spaceAfter=24),
-    'title': style('title', 29, 33, font='Times-Bold', keepWithNext=True, spaceAfter=9),
-    'section': style('section', 24, 29, font='Times-Bold', keepWithNext=True, spaceAfter=12),
-    'heading': style('heading', 13, 17, font='Helvetica-Bold', spaceBefore=12,
-                     spaceAfter=5, keepWithNext=True),
-    'body': style('body', 10.5, 14.3, spaceAfter=7),
-    'related_work': style('related_work', 9.2, 12.5, color=MUTED, spaceAfter=9),
-    'bullet': style('bullet', 10.5, 14.3, leftIndent=13, bulletIndent=1, spaceAfter=4),
-    'cell': style('cell', 10, 13.5),
-    'table_head': style('table_head', 9.5, 13, font='Helvetica-Bold', color=TEAL),
+    'cover_title': style('cover_title', 26, 31, font='Times-Bold', alignment=TA_CENTER, spaceAfter=5),
+    'cover_subtitle': style('cover_subtitle', 11.5, 14, alignment=TA_CENTER, spaceAfter=18),
+    'title': style('title', 19, 23, font='Times-Bold', keepWithNext=True, spaceAfter=7),
+    'section': style('section', 17, 21, font='Times-Bold', keepWithNext=True, spaceBefore=9, spaceAfter=7),
+    'heading': style('heading', 13, 16, font='Times-Bold', spaceBefore=11, spaceAfter=4, keepWithNext=True),
+    'body': style('body', 11, 14.2, alignment=TA_JUSTIFY, spaceAfter=6),
+    'bullet': style('bullet', 11, 14.2, leftIndent=13, bulletIndent=1, spaceAfter=4),
+    'cell': style('cell', 10.5, 13),
+    'table_head': style('table_head', 10.5, 13, font='Times-Bold'),
 }
 TOKEN = re.compile(r'\[((?:`[^`]+`|[^\]])+)\]\(([^)]+)\)|`([^`]+)`|\*\*([^*]+)\*\*')
+
+
+def architecture_drawing() -> Drawing:
+    diagram = Drawing(A4[0] - 2 * MARGIN, 168)
+    diagram.add(Rect(0, 0, diagram.width, diagram.height, fillColor=colors.white, strokeColor=None))
+
+    def box(x, y, width, height, title, lines):
+        diagram.add(Rect(x, y, width, height, fillColor=None, strokeColor=INK, strokeWidth=0.6))
+        diagram.add(String(x + 10, y + height - 17, title, fontName='Times-Bold',
+                           fontSize=11, fillColor=INK))
+        for index, line in enumerate(lines):
+            diagram.add(String(x + 10, y + height - 33 - 13 * index, line,
+                               fontName='Times-Roman', fontSize=10, fillColor=INK))
+
+    def exchange(left, right, y, label):
+        diagram.add(Line(left, y, right, y, strokeColor=INK, strokeWidth=0.6))
+        diagram.add(Polygon([left, y, left + 4, y + 2.5, left + 4, y - 2.5], fillColor=INK, strokeColor=None))
+        diagram.add(Polygon([right, y, right - 4, y + 2.5, right - 4, y - 2.5], fillColor=INK, strokeColor=None))
+        diagram.add(String((left + right) / 2, y + 7, label, fontName='Times-Roman',
+                           fontSize=8.5, fillColor=INK, textAnchor='middle'))
+
+    box(0, 84, 138, 73, 'Browser', ['React dashboard', 'MediaPipe pose estimation', 'Video stays on device'])
+    box(173, 84, 153, 73, 'FastAPI', ['Bounded five-agent workflow', 'Catalog and constraint checks', 'Draft review and approval'])
+    box(361, 84, 138, 73, 'TACC Qwen', ['Hosted text model', 'Structured agent responses'])
+    box(173, 4, 153, 54, 'PostgreSQL', ['Profiles, approved plans', 'Agent runs and progress'])
+    exchange(141, 170, 120, 'API')
+    exchange(329, 358, 120, 'Model')
+    diagram.add(Line(249.5, 61, 249.5, 81, strokeColor=INK, strokeWidth=0.6))
+    diagram.add(Polygon([249.5, 61, 247, 65, 252, 65], fillColor=INK, strokeColor=None))
+    diagram.add(Polygon([249.5, 81, 247, 77, 252, 77], fillColor=INK, strokeColor=None))
+    return diagram
 
 
 def link(label: str, target: str) -> str:
@@ -66,7 +99,7 @@ def link(label: str, target: str) -> str:
             target = f'{REVISION_URL}/{target}'
         else:
             target = f'{REPO}/blob/{REVISION}/{target}'
-    return f'<link href="{escape(target, quote=True)}" color="{TEAL.hexval()}"><u>{label}</u></link>'
+    return f'<link href="{escape(target, quote=True)}" color="{LINK_BLUE.hexval()}">{label}</link>'
 
 
 def inline(value: str) -> str:
@@ -90,7 +123,7 @@ class CodeBlock(Flowable):
     font = 'Courier'
     size = 8.0
     leading = 11.5
-    padding = 8
+    padding = 5
     spaceAfter = 7
 
     def __init__(self, lines: list[str]):
@@ -107,8 +140,6 @@ class CodeBlock(Flowable):
 
     def draw(self):
         canvas = self.canv
-        canvas.setFillColor(TINT)
-        canvas.roundRect(0, 0, self.width, self.height, 4, fill=1, stroke=0)
         canvas.setFillColor(INK)
         canvas.setFont(self.font, self.size)
         y = self.height - self.padding - self.size
@@ -117,54 +148,22 @@ class CodeBlock(Flowable):
             y -= self.leading
 
 
-class ContributionField(Flowable):
-    spaceAfter = 5
-
-    def __init__(self, name: str, student_id: str, contribution: str):
-        super().__init__()
-        self.height = 65
-        self.name = name
-        self.student_id = student_id
-        self.contribution = contribution
-
-    def wrap(self, available_width, available_height):
-        self.width = available_width
-        return self.width, self.height
-
-    def draw(self):
-        canvas = self.canv
-        canvas.setFont('Helvetica-Bold', 11)
-        canvas.setFillColor(INK)
-        canvas.drawString(0, 49, self.name)
-        canvas.setFont('Helvetica', 10)
-        canvas.setFillColor(MUTED)
-        canvas.drawRightString(self.width, 49, self.student_id)
-        canvas.acroForm.textfield(
-            name=f'contribution_{self.student_id}', tooltip=f'Contribution for {self.name}',
-            value=self.contribution, x=0, y=0, width=self.width, height=39, relative=True,
-            borderWidth=0.65, borderColor=RULE, fillColor=colors.white, textColor=INK,
-            fontName='Helvetica', fontSize=10.5, fieldFlags='multiline doNotScroll', maxlen=350,
-        )
-
-
-def data_table(rows: list[list[str]]) -> Table:
-    num_columns = len(rows[0])
+def article_table(rows: list[list[str]], proportions: tuple[float, ...]) -> Table:
     width = A4[0] - 2 * MARGIN
-    proportions = (0.17, 0.39, 0.44) if num_columns == 3 else (0.26, 0.74)
-    if len(proportions) != num_columns or any(len(row) != num_columns for row in rows):
-        raise ValueError('Unexpected README table shape')
+    if any(len(row) != len(proportions) for row in rows):
+        raise ValueError('Unexpected table shape')
     grid = Table(
-        [[Paragraph(inline(cell), STYLES['table_head' if index == 0 else 'cell'])
+        [[Paragraph(cell, STYLES['table_head' if index == 0 else 'cell'])
           for cell in row] for index, row in enumerate(rows)],
         colWidths=[width * fraction for fraction in proportions], repeatRows=1, hAlign='LEFT',
     )
     grid.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), TINT),
-        ('LINEBELOW', (0, 0), (-1, 0), 0.8, RULE),
-        ('LINEBELOW', (0, 1), (-1, -1), 0.4, RULE),
+        ('LINEABOVE', (0, 0), (-1, 0), 0.7, INK),
+        ('LINEBELOW', (0, 0), (-1, 0), 0.45, INK),
+        ('LINEBELOW', (0, -1), (-1, -1), 0.7, INK),
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         ('LEFTPADDING', (0, 0), (-1, -1), 9), ('RIGHTPADDING', (0, 0), (-1, -1), 9),
-        ('TOPPADDING', (0, 0), (-1, -1), 8), ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 5), ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
     ]))
     return grid
 
@@ -187,16 +186,20 @@ def render_readme(markdown: str) -> list:
                 level, title = heading.groups()
                 if len(lines) != 1:
                     raise ValueError(f'Add a blank line after heading: {title}')
-                if title in ('Run the end-to-end smoke test', 'Results and report references'):
+                if title in ('Getting Started Instructions', 'Test cases and scoring', 'Recorded evaluation results'):
                     flow.append(PageBreak())
                 key = {'#': 'title', '##': 'section', '###': 'heading'}[level]
                 item = Paragraph(inline(title), STYLES[key])
                 if level == '##':
                     item.bookmark = title.lower().replace(' ', '-')
                 flow.append(item)
+            elif len(lines) == 1 and re.fullmatch(r'!\[[^\]]+\]\(' + re.escape(ARCHITECTURE_PATH) + r'\)', line):
+                flow.extend([architecture_drawing(), Spacer(1, 6)])
             elif all(row.startswith('| ') and row.endswith(' |') for row in lines):
                 rows = [[cell.strip() for cell in row[1:-1].split('|')] for row in lines]
-                flow.extend([data_table([rows[0], *rows[2:]]), Spacer(1, 10)])
+                proportions = (0.17, 0.39, 0.44) if len(rows[0]) == 3 else (0.26, 0.74)
+                cells = [[inline(cell) for cell in row] for row in [rows[0], *rows[2:]]]
+                flow.extend([article_table(cells, proportions), Spacer(1, 8)])
             elif all(row.startswith('- ') for row in lines):
                 flow.extend(Paragraph(inline(row[2:]), STYLES['bullet'], bulletText='•') for row in lines)
             else:
@@ -213,51 +216,42 @@ class Submission(SimpleDocTemplate):
 
 
 def draw_page(canvas, doc):
-    width, height = A4
+    width, _ = A4
     canvas.saveState()
-    canvas.setStrokeColor(RULE)
-    canvas.setLineWidth(0.6)
-    canvas.line(MARGIN, 36, width - MARGIN, 36)
-    canvas.setFillColor(MUTED)
-    canvas.setFont('Helvetica', 8.5)
-    canvas.drawString(MARGIN, 22, 'FitPilot  /  CSIT6000V')
-    canvas.drawRightString(width - MARGIN, 22, str(doc.page))
-    if doc.page > 1:
-        canvas.drawString(MARGIN, height - 31, 'REPOSITORY README')
-        canvas.line(MARGIN, height - 39, width - MARGIN, height - 39)
+    canvas.setFillColor(INK)
+    canvas.setFont('Times-Roman', 10)
+    canvas.drawCentredString(width / 2, 27, str(doc.page))
     canvas.restoreState()
 
 
 def main() -> None:
     readme = (ROOT / 'README.md').read_text(encoding='utf-8')
-    if REVISION_URL not in readme:
-        raise ValueError('The submission cover and README must reference the same GitHub revision.')
+    if REVISION_URL not in readme or GRADING_URL not in readme:
+        raise ValueError('The README must link to the grading repository and revised report.')
+    renderSVG.drawToFile(architecture_drawing(), str(ROOT / ARCHITECTURE_PATH))
     OUTPUT.parent.mkdir(exist_ok=True)
     doc = Submission(str(OUTPUT), pagesize=A4, title='FitPilot · GitHub repository submission',
                      author='FitPilot project group', leftMargin=MARGIN - 6, rightMargin=MARGIN - 6,
-                     topMargin=57, bottomMargin=50)
+                     topMargin=48, bottomMargin=43)
     cover = [
-        Paragraph('CSIT6000V COURSE PROJECT', STYLES['eyebrow']),
         Paragraph('FitPilot', STYLES['cover_title']),
-        Paragraph('GitHub repository submission', STYLES['cover_subtitle']),
-        Paragraph('GitHub repository', STYLES['heading']),
-        Paragraph(link('Final grading package', REVISION_URL), STYLES['body']),
+        Paragraph('Course Project Artifacts Submission · CSIT6000V', STYLES['cover_subtitle']),
+        Paragraph('1. GitHub repository', STYLES['section']),
+        Paragraph(link('Grading repository · grading-final', GRADING_URL), STYLES['body']),
+        Paragraph(link('Revised artifact report and README', REVISION_URL), STYLES['body']),
         Paragraph(f'Evaluated source commit · {link(SOURCE_SHA, f"{REPO}/tree/{SOURCE_SHA}")}', STYLES['body']),
-        Paragraph(link(REPO.removeprefix('https://'), REPO), STYLES['body']),
-        Spacer(1, 12),
-        Paragraph('Group contributions', STYLES['heading']),
-        Spacer(1, 2),
+        Paragraph('2. Group contributions', STYLES['section']),
     ]
-    for name, student_id, contribution, label, url in MEMBERS:
-        cover.append(ContributionField(name, student_id, contribution))
-        cover.append(Paragraph(link(label, url), STYLES['related_work']))
+    members = [['Member', 'Student ID', 'Contribution and related work']]
+    for name, student_id, contribution, work in MEMBERS:
+        links = ' · '.join(link(label, url) for label, url in work)
+        members.append([escape(name), student_id, f'{escape(contribution)}<br/>{links}'])
     cover.extend([
-        Spacer(1, 7),
-        Paragraph('Repository README', STYLES['heading']),
-        Paragraph(link('Getting Started Instructions', '#getting-started-instructions'), STYLES['body']),
-        Paragraph(link('Detailed Instructions', '#detailed-instructions'), STYLES['body']),
+        article_table(members, (0.225, 0.15, 0.625)),
+        Spacer(1, 9),
+        Paragraph('3. Repository README', STYLES['section']),
     ])
-    doc.build([*cover, PageBreak(), *render_readme(readme)], onFirstPage=draw_page, onLaterPages=draw_page)
+    doc.build([*cover, *render_readme(readme)], onFirstPage=draw_page, onLaterPages=draw_page)
     print(OUTPUT)
 
 

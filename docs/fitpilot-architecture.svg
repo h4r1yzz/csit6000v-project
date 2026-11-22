@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE svg
+  PUBLIC '-//W3C//DTD SVG 1.0//EN'
+  'http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd'>
+<svg width="499.27559055118115" height="168" preserveAspectRatio="xMinYMin meet" viewBox="0 0 499 168" xmlns="http://www.w3.org/2000/svg" version="1.0" fill-rule="evenodd" xmlns:xlink="http://www.w3.org/1999/xlink">
+	<title>...</title>
+	<desc>...</desc>
+	<clipPath id="clip">
+		<rect x="0" y="0" width="499.27559055118115" height="168"/>
+	</clipPath>
+	<g id="group" transform="scale(1,-1) translate(0,-168)" style="clip-path: url(#clip)">
+		<g transform="">
+			<rect x="0" y="0" width="499.27559055118115" height="168" style="stroke: none; stroke-linecap: butt; stroke-width: 1; fill: rgb(100%,100%,100%); fill-rule: evenodd;"/>
+			<rect x="0" y="84" width="138" height="73" style="stroke: rgb(0%,0%,0%); stroke-linecap: butt; stroke-width: 0.6; fill: none; fill-rule: evenodd;"/>
+			<text x="10" y="140" style="font-family: Times-Bold; font-size: 11px;fill: rgb(0%,0%,0%); stroke:none;" transform="translate(0,280) scale(1,-1)">Browser</text>
+			<text x="10" y="124" style="font-family: Times-Roman; font-size: 10px;fill: rgb(0%,0%,0%); stroke:none;" transform="translate(0,248) scale(1,-1)">React dashboard</text>
+			<text x="10" y="111" style="font-family: Times-Roman; font-size: 10px;fill: rgb(0%,0%,0%); stroke:none;" transform="translate(0,222) scale(1,-1)">MediaPipe pose estimation</text>
+			<text x="10" y="98" style="font-family: Times-Roman; font-size: 10px;fill: rgb(0%,0%,0%); stroke:none;" transform="translate(0,196) scale(1,-1)">Video stays on device</text>
+			<rect x="173" y="84" width="153" height="73" style="stroke: rgb(0%,0%,0%); stroke-linecap: butt; stroke-width: 0.6; fill: none; fill-rule: evenodd;"/>
+			<text x="183" y="140" style="font-family: Times-Bold; font-size: 11px;fill: rgb(0%,0%,0%); stroke:none;" transform="translate(0,280) scale(1,-1)">FastAPI</text>
+			<text x="183" y="124" style="font-family: Times-Roman; font-size: 10px;fill: rgb(0%,0%,0%); stroke:none;" transform="translate(0,248) scale(1,-1)">Bounded five-agent workflow</text>
+			<text x="183" y="111" style="font-family: Times-Roman; font-size: 10px;fill: rgb(0%,0%,0%); stroke:none;" transform="translate(0,222) scale(1,-1)">Catalog and constraint checks</text>
+			<text x="183" y="98" style="font-family: Times-Roman; font-size: 10px;fill: rgb(0%,0%,0%); stroke:none;" transform="translate(0,196) scale(1,-1)">Draft review and approval</text>
+			<rect x="361" y="84" width="138" height="73" style="stroke: rgb(0%,0%,0%); stroke-linecap: butt; stroke-width: 0.6; fill: none; fill-rule: evenodd;"/>
+			<text x="371" y="140" style="font-family: Times-Bold; font-size: 11px;fill: rgb(0%,0%,0%); stroke:none;" transform="translate(0,280) scale(1,-1)">TACC Qwen</text>
+			<text x="371" y="124" style="font-family: Times-Roman; font-size: 10px;fill: rgb(0%,0%,0%); stroke:none;" transform="translate(0,248) scale(1,-1)">Hosted text model</text>
+			<text x="371" y="111" style="font-family: Times-Roman; font-size: 10px;fill: rgb(0%,0%,0%); stroke:none;" transform="translate(0,222) scale(1,-1)">Structured agent responses</text>
+			<rect x="173" y="4" width="153" height="54" style="stroke: rgb(0%,0%,0%); stroke-linecap: butt; stroke-width: 0.6; fill: none; fill-rule: evenodd;"/>
+			<text x="183" y="41" style="font-family: Times-Bold; font-size: 11px;fill: rgb(0%,0%,0%); stroke:none;" transform="translate(0,82) scale(1,-1)">PostgreSQL</text>
+			<text x="183" y="25" style="font-family: Times-Roman; font-size: 10px;fill: rgb(0%,0%,0%); stroke:none;" transform="translate(0,50) scale(1,-1)">Profiles, approved plans</text>
+			<text x="183" y="12" style="font-family: Times-Roman; font-size: 10px;fill: rgb(0%,0%,0%); stroke:none;" transform="translate(0,24) scale(1,-1)">Agent runs and progress</text>
+			<path d="M 141,120 L 170,120 Z" style="stroke: rgb(0%,0%,0%); stroke-linecap: butt; stroke-width: 0.6;"/>
+			<polygon points="141 120, 145 122.5, 145 117.5" style="stroke: none; stroke-linecap: butt; stroke-width: 1; fill: rgb(0%,0%,0%); fill-rule: evenodd;"/>
+			<polygon points="170 120, 166 122.5, 166 117.5" style="stroke: none; stroke-linecap: butt; stroke-width: 1; fill: rgb(0%,0%,0%); fill-rule: evenodd;"/>
+			<text x="148.65325" y="127" style="font-family: Times-Roman; font-size: 8.5px;fill: rgb(0%,0%,0%); stroke:none;" transform="translate(0,254) scale(1,-1)">API</text>
+			<path d="M 329,120 L 358,120 Z" style="stroke: rgb(0%,0%,0%); stroke-linecap: butt; stroke-width: 0.6;"/>
+			<polygon points="329 120, 333 122.5, 333 117.5" style="stroke: none; stroke-linecap: butt; stroke-width: 1; fill: rgb(0%,0%,0%); fill-rule: evenodd;"/>
+			<polygon points="358 120, 354 122.5, 354 117.5" style="stroke: none; stroke-linecap: butt; stroke-width: 1; fill: rgb(0%,0%,0%); fill-rule: evenodd;"/>
+			<text x="332.40325" y="127" style="font-family: Times-Roman; font-size: 8.5px;fill: rgb(0%,0%,0%); stroke:none;" transform="translate(0,254) scale(1,-1)">Model</text>
+			<path d="M 249.5,61 L 249.5,81 Z" style="stroke: rgb(0%,0%,0%); stroke-linecap: butt; stroke-width: 0.6;"/>
+			<polygon points="249.5 61, 247 65, 252 65" style="stroke: none; stroke-linecap: butt; stroke-width: 1; fill: rgb(0%,0%,0%); fill-rule: evenodd;"/>
+			<polygon points="249.5 81, 247 77, 252 77" style="stroke: none; stroke-linecap: butt; stroke-width: 1; fill: rgb(0%,0%,0%); fill-rule: evenodd;"/>
+		</g>
+	</g>
+</svg>

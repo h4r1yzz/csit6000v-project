@@ -1,10 +1,10 @@
 # FitPilot
 
-FitPilot is a fitness planning app built for CSIT6000V. Its React dashboard tracks exercise pose in the browser. The FastAPI backend coordinates five planning and feedback agents and stores profiles, plans, and progress in PostgreSQL. Live agent requests use TACC Qwen or a compatible model endpoint.
+FitPilot studies how to produce personalized workout and meal plans that satisfy scheduling, equipment, dietary, and budget constraints together. Its central contribution is a bounded five-agent planning workflow that shares user context, builds from curated exercise and meal catalogs, and validates the draft before the user can approve it. We compare this workflow with one-call and revision-based generalists over 270 live TACC Qwen trials, measuring constraint satisfaction, completion, latency, and model usage. Browser pose tracking supplies optional measurements to the exercise feedback stage.
 
-[Final grading package](https://github.com/h4r1yzz/csit6000v-project/tree/grading-final) · [Public GitHub repository](https://github.com/h4r1yzz/csit6000v-project)
+[Grading repository (`grading-final`)](https://github.com/h4r1yzz/csit6000v-project/tree/grading-final) · [Revised artifact report and README](https://github.com/h4r1yzz/csit6000v-project/tree/grading-report)
 
-The full live evaluation uses the [pinned v4 source commit](https://github.com/h4r1yzz/csit6000v-project/tree/ca94084617e3458ce639b7074debfe9029af3eb9), `ca94084617e3458ce639b7074debfe9029af3eb9`. The final package includes that application and evaluator with setup materials and the [full run evidence](evaluation/full-v4).
+The evaluated source is [v4](https://github.com/h4r1yzz/csit6000v-project/tree/ca94084617e3458ce639b7074debfe9029af3eb9), `ca94084617e3458ce639b7074debfe9029af3eb9`. The grading repository contains the runtime, evaluator, and [full run evidence](evaluation/full-v4). The revised report describes that same evaluated application.
 
 ## Getting Started Instructions
 
@@ -62,6 +62,14 @@ DATABASE_URL="$TEST_DATABASE_URL" python3.11 scripts/dev.py
 
 Open the [dashboard](http://127.0.0.1:5173) or [API documentation](http://127.0.0.1:8000/docs). Create an app account to open the dashboard. Stop the launcher with Ctrl+C. See [the example environment file](backend/.env.example) for available settings and the [TACC setup guide](backend/tacc/README.md) for live planning, specialist agents, and chat.
 
+Check the local API with `curl -fsS http://127.0.0.1:8000/api/health`. The response should include `status: ok` and `database: connected`.
+
+### Walk through a live planning case
+
+With Qwen connected on the `grading-final` checkout, create an account and open **Preferences**. Choose two days per week, select Tuesday and Saturday, set 35 minutes per session, and use bodyweight and dumbbells with a USD 70 food budget. Save preferences, open **My week**, and select **Build my week**.
+
+Inspect the draft for Tuesday and Saturday sessions, 21 meal servings, and seven passing validation checks. Then select **Approve & save my week** and reload to verify the active plan persists. The [recorded P02 trial](evaluation/full-v4/planning.json) produced two 35-minute sessions and an estimated menu cost of USD 67.90 in repeat 1. Reruns can select different valid exercises and meals.
+
 ## Detailed Instructions
 
 ### Verify the application
@@ -73,6 +81,21 @@ RUN_DIR=$(mktemp -d)
 backend/.venv/bin/python scripts/verify.py --output "$RUN_DIR/verification.json"
 ```
 
+### System architecture
+
+![FitPilot system architecture](docs/fitpilot-architecture.svg)
+
+The coordinator loads the signed-in user’s profile, activity, and saved pose summary. It runs Goal planning → Exercise planning → Nutrition → Exercise feedback, validates the assembled draft, then runs Evaluation and adaptation. The user reviews the draft before approval. Changing preferences or recording progress supplies context for a new draft.
+
+MediaPipe runs in the browser. Saved measurements such as repetition count, angles, and confidence enter the feedback stage as structured data. Webcam frames and uploaded clips stay in the browser. The live model receives relevant profile and activity context through FastAPI.
+
+| Where to look | Responsibility |
+| --- | --- |
+| [Coordinator and agents](backend/app/agents.py) | Stage order, shared context, catalog filtering, targeted revisions, and draft validation |
+| [API and persistence](backend/app/main.py) | `POST /api/workflows/plan` creates a draft. `POST /api/plans` approves it. PostgreSQL stores plans and execution history. |
+| [Pose tracker](frontend/src/PoseCoach.tsx) | Browser inference, repetition estimates, and explicit session saving |
+| [Evaluation runner](scripts/evaluate.py) | Scenario inputs, baseline prompts, trace capture, and pass/fail scoring |
+
 ### Test cases and scoring
 
 | Suite | Data | Metric |
@@ -82,6 +105,21 @@ backend/.venv/bin/python scripts/verify.py --output "$RUN_DIR/verification.json"
 | Feedback | A missing session and two synthetic pose summaries in [the feedback runner](scripts/evaluate_feedback.py) | Returned metric consistency and a confidence note when measurements are absent or low confidence |
 
 The live comparison uses the same case inputs and final validator for the five specialists, a one-call generalist, and a generalist with one revision. The validator checks schedule, session time, exercise eligibility, dietary compatibility, catalog facts, weekly servings, and budget. The traces include model responses, specialist stage order and status, validation, latency, calls, and tokens. See the [scoring methodology](docs/EVALUATION.md).
+
+### Representative live cases
+
+| Case | Input and check | Observed result in the clean v4 run |
+| --- | --- | --- |
+| P02 | Respect exact workout days and a USD 70 food budget. | Repeat 1 scheduled Tuesday and Saturday for 35 minutes each, selected 21 servings for USD 67.90, and passed all seven checks. |
+| P19 | Report infeasibility for a USD 0 food budget. | All three specialist repeats stopped at Nutrition before requesting a model response for that stage. |
+| A05 | Change a previously valid plan to vegan meals. | Repeat 1 replaced the incompatible menu with 11 chickpea rice bowls and 10 lentil tomato soups for USD 47.10. The draft passed. |
+| Feedback | Preserve four squat reps and mean confidence 0.43. | The API returned the measurements with a low-visibility note. The test uses a synthetic summary. |
+
+### Why the generalist baselines missed feasible plans
+
+In the [54 feasible planning trials per method](evaluation/full-v4/planning.json), the one-call baseline returned an infeasibility signal with an empty menu all 54 times. The revision baseline did that in 50 final drafts. Its other four drafts supplied meals but failed the budget check through an incorrect total, an over-budget menu, or both. The trials had no baseline transport errors or final JSON parsing failures.
+
+P02 repeat 1 makes the difference concrete. The one-call baseline returned `NO_COMPATIBLE_MENU`. The revision baseline treated the five listed recipes as insufficient for 21 servings. Its input supplied recipe facts with one serving per row. The specialist chose three compatible recipes at seven servings each and stayed under USD 70. This trace points to serving allocation as one failure mode. The experiment compares the full workflows, so it cannot isolate agent count from catalog filtering, constrained menu selection, and validation.
 
 ### Sample workflows and chat history
 
@@ -126,9 +164,9 @@ The full run produces 180 planning trials and 90 adaptation trials with three re
 
 The [reproducibility guide](docs/REPRODUCIBILITY.md) links the exact source commit, a clean installation check, the replay of the original 270 trials, and the fresh full live evaluation.
 
-### Results and report references
+### Recorded evaluation results
 
-Use the [fresh Tables 1–5](evaluation/full-v4/tables.md) and [original report tables](docs/EVALUATION.md#recorded-live-results) to locate each result. The [full run evidence](evaluation/full-v4) includes all 270 trial traces and the [side-by-side scores](evaluation/full-v4/comparison.md).
+Use the [clean v4 Tables 1–5](evaluation/full-v4/tables.md) and [original run tables](evaluation/results/tables.md) to locate each result. The [full run evidence](evaluation/full-v4) includes all 270 trial traces and the [side-by-side scores](evaluation/full-v4/comparison.md).
 
 | Reference | Original run | Fresh clean v4 run |
 | --- | --- | --- |
@@ -138,6 +176,8 @@ Use the [fresh Tables 1–5](evaluation/full-v4/tables.md) and [original report 
 | Table 5 · Stage flow | All five stages completed in 52/54 feasible planning and 24/24 feasible adaptation trials. | All five stages completed in 53/54 feasible planning and 22/24 feasible adaptation trials. |
 
 The [fresh feedback API record](evaluation/full-v4/feedback.json) passed 3/3 synthetic summary cases.
+
+In planning, specialists averaged 4.70 model calls per attempt versus 1.00 for one call and 1.90 with revision. They completed 53 of 54 feasible drafts, while both baselines completed none. The extra calls and higher median latency are the measured price of the constraint pass rate on this case bank. This fits a user-initiated weekly planning task where the user reviews a draft before saving. We did not measure acceptable wait time in a user study.
 
 ### Limitations and expected variation
 

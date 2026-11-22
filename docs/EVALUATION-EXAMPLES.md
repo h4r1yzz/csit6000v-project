@@ -76,3 +76,11 @@ The first turn calls `get_profile` and receives its result before answering. The
 | Public evaluation examples | The committed trace files under [`evaluation/results`](../evaluation/results) contain synthetic inputs and evaluation responses. They are suitable for grader review without an account on the running FitPilot app. |
 
 The coach uses the saved profile and up to six recent user questions as context. The chat history shown in the UI includes prior assistant replies, while the next model request uses the recent questions. See the [database guide](DATABASE.md) and [API reference](API.md).
+
+## Presentation walkthrough
+
+1. Start with the planning problem. One draft has to satisfy an exact schedule, a session duration limit, equipment restrictions, dietary filters, 21 servings, and a weekly budget at the same time.
+2. Show the [architecture diagram](fitpilot-architecture.svg). Explain how the coordinator passes state between the five specialists and validates the combined draft. Introduce pose tracking here as an optional source of structured feedback.
+3. Walk through P02 from saved preferences to approval. In the app, change the accepted plan’s food preferences to vegan and request a new draft. For a recorded example of that dietary change on the benchmark’s starting plan, use A05 in the [adaptation trace](../evaluation/full-v4/adaptation.json).
+4. Show [Tables 1–5](../evaluation/full-v4/tables.md) and open P02 repeat 1 in the [fresh planning trace](../evaluation/full-v4/planning.json). Explain that both generalists returned empty meals on a feasible input, while the specialist selected a valid 21-serving menu. Point out that the baseline results also reflect their prompt and menu selection setup.
+5. Close with the measured trade-off. The specialist planner passed 53 of 54 feasible planning trials with median latency of 64.2 seconds. The one-call baseline passed 0 of 54 at 27.3 seconds. A follow-up could give both approaches the same vetted menu options and matched retry budgets to test how much of the difference comes from orchestration.

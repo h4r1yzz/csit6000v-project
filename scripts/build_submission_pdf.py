@@ -29,7 +29,7 @@ MEMBERS = (
      (('Coordinator implementation', f'{REPO}/commit/b7fe39a12170fa0ac6ea4e2e95ae85c239af5a61'),
       ('Bilateral pose tracking', f'{HISTORY}/b3754ded95cd11b90e4872d0a35383a83d25e719'))),
     ('Allabonu Sri Harsha Lakshman', '21344461',
-     'Tested FitPilot and prepared project documentation covering setup, verification, and evaluation.',
+     'Tested FitPilot using 43 backend tests, 17 pose tests, end-to-end API and chat checks, 270 live TACC Qwen trials across shared planning and adaptation cases, and separate feedback checks. Wrote the setup, verification, and reviewer walkthrough documentation.',
      (('Shared test cases and reviewer walkthrough', 'docs/EVALUATION-EXAMPLES.md'),)),
     ('Nehanth Kasi Geetha', '21386988',
      'Built the initial React and FastAPI web app. Developed the planning agent workflow and TACC Qwen integration. Added account login and per-user model request history.',

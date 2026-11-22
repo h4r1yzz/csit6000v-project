@@ -11,7 +11,7 @@ The grading repository contains the app, evaluator, and [full run evidence](eval
 ### Prerequisites
 
 - Git, Python 3.11, Node.js 22.18 or later with npm, and a macOS or Linux shell.
-- A disposable PostgreSQL database and a login that can create schemas in it. Use a local or hosted database, or Docker with Compose.
+- A PostgreSQL login that can create schemas. Choose Neon, a local PostgreSQL installation, or Docker below. Use a disposable database or Neon branch for verification.
 - Internet access for dependency installation. The smoke test runs without a camera, GPU, TACC account, or model endpoint.
 
 ### Install and configure
@@ -27,23 +27,65 @@ npm ci --prefix frontend
 
 ### Configure PostgreSQL
 
-For an existing PostgreSQL database, export its disposable connection string as `TEST_DATABASE_URL` in the same shell. To create a database on a running local server, use the following commands.
+Choose one option. The app reads `DATABASE_URL` from the private `backend/.env` file. Create that file from the example if it is missing. Edit the database lines for your chosen option and keep any existing model settings.
+
+```bash
+test -f backend/.env || cp backend/.env.example backend/.env
+```
+
+### Option 1. Neon (hosted PostgreSQL)
+
+In your Neon project's **Connect** dialog, select your branch, database, and role. Copy the pooled and direct connection strings for that same database into `backend/.env`. Use a disposable branch if you plan to run verification. [Neon connection instructions](https://neon.com/docs/connect/connect-from-any-app)
+
+```dotenv
+DATABASE_URL='PASTE_POOLED_NEON_URL_HERE'
+DATABASE_URL_UNPOOLED='PASTE_DIRECT_NEON_URL_HERE'
+```
+
+Replace both placeholders with your full URLs, including their SSL parameters. Keep the quotes and keep the file private. Neon hosts the database, so proceed to the smoke test without starting a local server.
+
+### Option 2. Install PostgreSQL locally
+
+On macOS with Homebrew, install and start PostgreSQL 17. [Homebrew PostgreSQL 17](https://formulae.brew.sh/formula/postgresql@17)
+
+```bash
+brew install postgresql@17
+export PATH="$(brew --prefix postgresql@17)/bin:$PATH"
+brew services run postgresql@17
+pg_isready
+```
+
+Once `pg_isready` reports `accepting connections`, create the database once.
 
 ```bash
 createdb fitpilot_artifact
-export TEST_DATABASE_URL='postgresql:///fitpilot_artifact'
 ```
 
-For a local Docker database, [Compose](compose.yaml) starts PostgreSQL 17.12 on port `54327`. The credentials below are for this local database. `docker compose down` stops the service and preserves the named volume.
+Set `DATABASE_URL='postgresql:///fitpilot_artifact'` and `DATABASE_URL_UNPOOLED=` in `backend/.env`. If the database already exists, skip `createdb`. On Linux, use your distribution's PostgreSQL server and client packages and a role with schema creation permission, or use Option 3. [PostgreSQL downloads](https://www.postgresql.org/download/)
+
+### Option 3. Docker
+
+Install Docker with Compose v2 and start the Docker engine. From the repository root, use [Compose](compose.yaml) to start PostgreSQL 17.12. It creates `fitpilot_artifact` and waits for the health check.
 
 ```bash
+docker compose version
 docker compose up -d --wait postgres
-export TEST_DATABASE_URL='postgresql://fitpilot:fitpilot_dev@127.0.0.1:54327/fitpilot_artifact'
+```
+
+Use these local-only settings in `backend/.env`.
+
+```dotenv
+DATABASE_URL='postgresql://fitpilot:fitpilot_dev@127.0.0.1:54327/fitpilot_artifact'
+DATABASE_URL_UNPOOLED=
 ```
 
 ### Run the end-to-end smoke test
 
+Set `TEST_DATABASE_URL` in your shell. Use the direct URL of a disposable Neon branch for Option 1 or the local database URL shown for Option 2 or 3. The verification scripts read shell variables. Clear any inherited direct app URL so verification creates and cleans up its test schemas on the selected test database.
+
 ```bash
+export TEST_DATABASE_URL='PASTE_DISPOSABLE_DATABASE_URL_HERE'
+unset DATABASE_URL_UNPOOLED
 backend/.venv/bin/python scripts/smoke.py
 ```
 
@@ -57,12 +99,14 @@ SIMULATED MODEL: this checks application integration, not live inference or reco
 ### Open the app
 
 ```bash
-DATABASE_URL="$TEST_DATABASE_URL" python3.11 scripts/dev.py
+env -u DATABASE_URL -u DATABASE_URL_UNPOOLED python3.11 scripts/dev.py
 ```
 
 Open the [dashboard](http://127.0.0.1:5173) or [API documentation](http://127.0.0.1:8000/docs). Create an app account to open the dashboard. Stop the launcher with Ctrl+C. See [the example environment file](backend/.env.example) for available settings and the [TACC setup guide](backend/tacc/README.md) for live planning, specialist agents, and chat.
 
 Check the local API with `curl -fsS http://127.0.0.1:8000/api/health`. The response should include `status: ok` and `database: connected`.
+
+After stopping the app, use `brew services stop postgresql@17` for the Homebrew service or `docker compose down` for Docker. The database data persists.
 
 ### Walk through a live planning case
 
@@ -141,7 +185,7 @@ python3.11 scripts/summarize_evaluation.py \
 
 ### Rerun the live evaluation
 
-To rerun the reported trials, set up the [exact evaluated v4 checkout](docs/REPRODUCIBILITY.md#run-from-the-exact-evaluated-source). Connect to the course Qwen service through the [TACC setup guide](backend/tacc/README.md). Run the commands below from the v4 repository root with `TEST_DATABASE_URL` exported. The smoke test checks all five stages, approval, and readback. Replace the example URL if your tunnel uses a different address.
+To rerun the reported trials, set up the [exact evaluated v4 checkout](docs/REPRODUCIBILITY.md#run-from-the-exact-evaluated-source). Connect through the [TACC setup guide](backend/tacc/README.md). If using the launcher's SSH tunnel, keep the launcher running in the first terminal. In a second terminal, enter the v4 repository root and export `TEST_DATABASE_URL` as in the smoke test. The live smoke test checks all five stages, approval, and readback. Replace the example URL if your endpoint uses a different address.
 
 ```bash
 unset LLM_BASE_URL LLM_MODEL LLM_API_KEY LLM_TIMEOUT_SECONDS

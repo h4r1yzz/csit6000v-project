@@ -22,7 +22,7 @@ git rev-parse HEAD
 git status --porcelain
 ```
 
-Expect `ca94084617e3458ce639b7074debfe9029af3eb9` and no status output. Install the dependencies and configure a disposable PostgreSQL database as described in [Getting Started](../README.md#getting-started-instructions). If you use the Compose database, start it from the final package and export that database URL in the v4 clone's shell. Write new logs and JSON outside the v4 clone.
+Expect `ca94084617e3458ce639b7074debfe9029af3eb9` and no status output. Install the dependencies and choose a disposable PostgreSQL database as described in [Getting Started](../README.md#getting-started-instructions). If using Compose, start it from the final package. In the v4 clone's shell, [export the test database URL](../README.md#run-the-end-to-end-smoke-test) before running checks. Write new logs and JSON outside the v4 clone.
 
 ```bash
 RUN_DIR=$(mktemp -d)

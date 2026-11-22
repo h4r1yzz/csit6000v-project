@@ -1,13 +1,13 @@
 # Run FitPilot locally with TACC Qwen
 
-Start the React dashboard and FastAPI backend on your computer using the [local setup guide](../../README.md). MediaPipe analyzes webcam and video in the browser. FastAPI runs the five agents and stores the profile, plans, and logs in Neon Postgres (`DATABASE_URL`). A GPU job in the CSIT6000V public Project environment serves `qwen3.8-27b` for the agents' model requests.
+Install the app dependencies and choose a database using the [local setup guide](../../README.md#getting-started-instructions). MediaPipe analyzes video in the browser. FastAPI runs the five agents and connects to PostgreSQL using `DATABASE_URL`. A GPU job in the CSIT6000V public Project environment serves `qwen3.8-27b` for model requests.
 
 ```mermaid
 flowchart LR
     subgraph Local[Your computer]
         Browser[React dashboard and browser pose tracking] --> API[FastAPI and agents]
-        API <--> DB[(Neon Postgres)]
     end
+    API <--> DB[(Configured PostgreSQL database)]
     API -->|Model requests| Qwen[TACC GPU job running Qwen]
 ```
 
@@ -87,7 +87,7 @@ If your TACC gateway permits TCP forwarding, start FitPilot with the running ser
 
 ```bash
 cd "$FITPILOT_ROOT"
-python3 scripts/dev.py --tacc-job "$SERVICE_JOB_ID"
+env -u DATABASE_URL -u DATABASE_URL_UNPOOLED python3.11 scripts/dev.py --tacc-job "$SERVICE_JOB_ID"
 ```
 
 If the SDK is outside `PATH`, add `--tcloud /absolute/path/to/tcloud`. If port `18000` is occupied, select a free port with `--tacc-port`. Ctrl+C stops the local app and closes the SSH connection. Use step 5 to stop the GPU job. When the GPU job ends, the dashboard stays available but model-dependent requests fail until a new reachable service is configured.
@@ -103,17 +103,11 @@ QWEN_BASE_URL=http://REACHABLE_QWEN_ADDRESS:8000/v1
 QWEN_MODEL=qwen3.8-27b
 ```
 
-Use the address and port for your connection. Start from the repository root with `python3 scripts/dev.py`, or add `--env-file .env` when running Uvicorn from `backend/` in a separate terminal.
+Use the address and port for your connection. Start the app from the repository root using the [launch command](../../README.md#open-the-app).
 
 ### Verify the local API connection
 
-With either connection, check reachability from FastAPI.
-
-```bash
-curl -fsS http://127.0.0.1:8000/api/model/status
-```
-
-Check `reachable` in the response. When it is `true`, open the dashboard and run an agent. Inspect the source shown on its result. FitPilot sends model prompts with relevant context, including saved pose measurements for exercise feedback. Video frames and pose inference stay in the browser; profile data lives in Neon. The model is bundled locally and the build copies WASM assets from the installed MediaPipe package.
+Sign in to the [dashboard](http://127.0.0.1:5173), then open [model status](http://127.0.0.1:5173/api/model/status) in the same browser. When the response shows `"reachable": true`, return to the dashboard and run an agent. FitPilot sends relevant context to Qwen, including saved pose measurements for exercise feedback. Video frames and pose inference stay in the browser.
 
 ## Optional validation inside TACC
 

@@ -39,16 +39,7 @@ No camera footage is sent to Neon. The existing save action sends summary measur
 
 ## Local development and tests
 
-`python3 scripts/dev.py` loads root `.env.local`, root `.env`, then `backend/.env` without overriding already set environment values. `DATABASE_URL` is required.
-
-```sh
-# Prefer TEST_DATABASE_URL pointing at a disposable Neon branch.
-PYTHONPATH=backend backend/.venv/bin/python -m unittest discover -s backend/tests -q
-npm run build --prefix frontend
-node --test frontend/src/pose/analysis.test.mjs
-```
-
-Unit tests and smoke create and drop isolated `test_*` schemas.
+For local development, put the app connection settings in `backend/.env` and use the [local launch command](../README.md#open-the-app). For verification, [export a disposable test database URL](../README.md#run-the-end-to-end-smoke-test) in your shell and run the [full local check](../README.md#verify-the-application).
 
 References: [Vercel FastAPI](https://vercel.com/docs/frameworks/backend/fastapi), [Neon Python](https://neon.com/docs/guides/python), [Neon connection pooling](https://neon.com/docs/connect/connection-pooling).
 

@@ -2,7 +2,7 @@
 
 FitPilot uses Neon Postgres (or any Postgres URL in `DATABASE_URL`). `backend/app/db.py` manages connections, schema initialization, parameterized queries, and JSON serialization. There is no SQLite mode.
 
-Use the pooled Neon URL for normal requests. Optionally set `DATABASE_URL_UNPOOLED` for schema setup. Never prefix either name with `VITE_`.
+Follow the [database setup options](../README.md#configure-postgresql) for Neon, Homebrew PostgreSQL, or Docker. Use the pooled Neon URL for normal requests and the direct URL for schema setup. Both must point to the same branch and database. Keep database URLs on the server.
 
 ## Stored records
 
@@ -35,7 +35,7 @@ The registry holds `accounts` and `account_sessions` (see `database/auth.sql`) i
 
 ## Initialization
 
-Local `scripts/dev.py` and FastAPI startup call `db.initialize()` / `auth.initialize_registry()` when not running on Vercel. Schema DDL lives in `database/schema.postgres.sql` and `database/auth.sql`. Seed catalogs use `database/seed.postgres.sql` with idempotent inserts.
+FastAPI initializes the schemas and catalogs on local startup. Schema DDL lives in `database/schema.postgres.sql` and `database/auth.sql`. Seed catalogs use `database/seed.postgres.sql` with idempotent inserts.
 
 On Vercel, cold starts do not create schema. Apply the SQL files on Neon before the first deploy (see `docs/DEPLOY-VERCEL.md`).
 
@@ -43,7 +43,7 @@ Application queries still use `?` placeholders; `db.postgres_query` rewrites the
 
 ## Testing and smoke
 
-Unit tests, `scripts/smoke.py`, and `scripts/verify.py` create disposable schemas (`test_*`) on `TEST_DATABASE_URL` or `DATABASE_URL`, then drop them. Prefer a Neon branch that is not production when sharing credentials with teammates or graders.
+Unit tests, `scripts/smoke.py`, and `scripts/verify.py` read `TEST_DATABASE_URL` from the shell and create and drop disposable schemas. Use a disposable database or branch. Leave `DATABASE_URL_UNPOOLED` unset in the test shell or point it at the same test database.
 
 ## Recommendation history
 

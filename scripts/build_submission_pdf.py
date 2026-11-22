@@ -185,7 +185,8 @@ def render_readme(markdown: str) -> list:
                 level, title = heading.groups()
                 if len(lines) != 1:
                     raise ValueError(f'Add a blank line after heading: {title}')
-                if title in ('Getting Started Instructions', 'Test cases and scoring',
+                if title in ('Getting Started Instructions', 'Option 3. Docker',
+                             'Walk through a live planning case', 'Test cases and scoring',
                              'Sample workflows and chat history', 'Recorded evaluation results'):
                     flow.append(PageBreak())
                 key = {'#': 'title', '##': 'section', '###': 'heading'}[level]

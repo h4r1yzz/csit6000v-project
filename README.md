@@ -2,9 +2,9 @@
 
 FitPilot studies how to produce personalized workout and meal plans that satisfy scheduling, equipment, dietary, and budget constraints together. Its central contribution is a bounded five-agent planning workflow that shares user context, builds from curated exercise and meal catalogs, and validates the draft before the user can approve it. We compare this workflow with one-call and revision-based generalists over 270 live TACC Qwen trials, measuring constraint satisfaction, completion, latency, and model usage. Browser pose tracking supplies optional measurements to the exercise feedback stage.
 
-[Grading repository (`grading-final`)](https://github.com/h4r1yzz/csit6000v-project/tree/grading-final) · [Revised artifact report and README](https://github.com/h4r1yzz/csit6000v-project/tree/grading-report)
+[Grading repository (`grading-final`)](https://github.com/h4r1yzz/csit6000v-project/tree/grading-final)
 
-The evaluated source is [v4](https://github.com/h4r1yzz/csit6000v-project/tree/ca94084617e3458ce639b7074debfe9029af3eb9), `ca94084617e3458ce639b7074debfe9029af3eb9`. The grading repository contains the runtime, evaluator, and [full run evidence](evaluation/full-v4). The revised report describes that same evaluated application.
+The grading repository contains the app, evaluator, and [full run evidence](evaluation/full-v4). The clean live trials used [source commit `ca940846`](https://github.com/h4r1yzz/csit6000v-project/tree/ca94084617e3458ce639b7074debfe9029af3eb9). The grading checkout includes later dashboard changes and the same model workflow, case inputs, and scoring scripts.
 
 ## Getting Started Instructions
 
@@ -66,9 +66,9 @@ Check the local API with `curl -fsS http://127.0.0.1:8000/api/health`. The respo
 
 ### Walk through a live planning case
 
-With Qwen connected on the `grading-final` checkout, create an account and open **Preferences**. Choose two days per week, select Tuesday and Saturday, set 35 minutes per session, and use bodyweight and dumbbells with a USD 70 food budget. Save preferences, open **My week**, and select **Build my week**.
+With Qwen connected on the `grading-final` checkout, create an account and open **Preferences**. Choose two days per week, Tuesday and Saturday, 35 minutes per session, bodyweight and dumbbells, and a USD 70 food budget. Use the starting goal, beginner experience, and high-protein preference. Select **Save & continue**, then **Build my week**.
 
-Inspect the draft for Tuesday and Saturday sessions, 21 meal servings, and seven passing validation checks. Then select **Approve & save my week** and reload to verify the active plan persists. The [recorded P02 trial](evaluation/full-v4/planning.json) produced two 35-minute sessions and an estimated menu cost of USD 67.90 in repeat 1. Reruns can select different valid exercises and meals.
+Inspect Tuesday and Saturday sessions and 21 meal servings. Open **Preference checks** to verify seven passing checks, then select **Approve my week** and reload to confirm the plan persists. The [recorded P02 trial](evaluation/full-v4/planning.json) produced two 35-minute sessions and an estimated menu cost of USD 67.90 in repeat 1. Reruns can select different valid exercises and meals.
 
 ## Detailed Instructions
 
@@ -141,7 +141,7 @@ python3.11 scripts/summarize_evaluation.py \
 
 ### Rerun the live evaluation
 
-Start the course Qwen service and connect through the [TACC setup guide](backend/tacc/README.md). With the tunnel active, run the commands below from the repository root in a second shell with `TEST_DATABASE_URL` exported. The live smoke test checks all five stages, approval, and readback before the benchmark. Replace the example URL if you use a different reachable address.
+To rerun the reported trials, set up the [exact evaluated v4 checkout](docs/REPRODUCIBILITY.md#run-from-the-exact-evaluated-source). Connect to the course Qwen service through the [TACC setup guide](backend/tacc/README.md). Run the commands below from the v4 repository root with `TEST_DATABASE_URL` exported. The smoke test checks all five stages, approval, and readback. Replace the example URL if your tunnel uses a different address.
 
 ```bash
 unset LLM_BASE_URL LLM_MODEL LLM_API_KEY LLM_TIMEOUT_SECONDS

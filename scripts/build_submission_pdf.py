@@ -18,9 +18,8 @@ from reportlab.platypus import Flowable, PageBreak, Paragraph, SimpleDocTemplate
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / 'submission/FitPilot-Repository-Submission.pdf'
 REPO = 'https://github.com/h4r1yzz/csit6000v-project'
-REVISION = 'grading-report'
-REVISION_URL = f'{REPO}/tree/{REVISION}'
-GRADING_URL = f'{REPO}/tree/grading-final'
+GRADING_TAG = 'grading-final'
+GRADING_URL = f'{REPO}/tree/{GRADING_TAG}'
 SOURCE_SHA = 'ca94084617e3458ce639b7074debfe9029af3eb9'
 HISTORY = 'https://github.com/NehanthKG/CSIT6000V-fitness-tracker/commit'
 ARCHITECTURE_PATH = 'docs/fitpilot-architecture.svg'
@@ -63,7 +62,7 @@ TOKEN = re.compile(r'\[((?:`[^`]+`|[^\]])+)\]\(([^)]+)\)|`([^`]+)`|\*\*([^*]+)\*
 
 
 def architecture_drawing() -> Drawing:
-    diagram = Drawing(A4[0] - 2 * MARGIN, 168)
+    diagram = Drawing(A4[0] - 2 * MARGIN, 158)
     diagram.add(Rect(0, 0, diagram.width, diagram.height, fillColor=colors.white, strokeColor=None))
 
     def box(x, y, width, height, title, lines):
@@ -96,9 +95,9 @@ def architecture_drawing() -> Drawing:
 def link(label: str, target: str) -> str:
     if not urlsplit(target).scheme and not target.startswith('#'):
         if (ROOT / urlsplit(target).path).is_dir():
-            target = f'{REVISION_URL}/{target}'
+            target = f'{GRADING_URL}/{target}'
         else:
-            target = f'{REPO}/blob/{REVISION}/{target}'
+            target = f'{REPO}/blob/{GRADING_TAG}/{target}'
     return f'<link href="{escape(target, quote=True)}" color="{LINK_BLUE.hexval()}">{label}</link>'
 
 
@@ -163,7 +162,7 @@ def article_table(rows: list[list[str]], proportions: tuple[float, ...]) -> Tabl
         ('LINEBELOW', (0, -1), (-1, -1), 0.7, INK),
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         ('LEFTPADDING', (0, 0), (-1, -1), 9), ('RIGHTPADDING', (0, 0), (-1, -1), 9),
-        ('TOPPADDING', (0, 0), (-1, -1), 5), ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('TOPPADDING', (0, 0), (-1, -1), 4), ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
     ]))
     return grid
 
@@ -186,7 +185,8 @@ def render_readme(markdown: str) -> list:
                 level, title = heading.groups()
                 if len(lines) != 1:
                     raise ValueError(f'Add a blank line after heading: {title}')
-                if title in ('Getting Started Instructions', 'Test cases and scoring', 'Recorded evaluation results'):
+                if title in ('Getting Started Instructions', 'Test cases and scoring',
+                             'Sample workflows and chat history', 'Recorded evaluation results'):
                     flow.append(PageBreak())
                 key = {'#': 'title', '##': 'section', '###': 'heading'}[level]
                 item = Paragraph(inline(title), STYLES[key])
@@ -226,8 +226,8 @@ def draw_page(canvas, doc):
 
 def main() -> None:
     readme = (ROOT / 'README.md').read_text(encoding='utf-8')
-    if REVISION_URL not in readme or GRADING_URL not in readme:
-        raise ValueError('The README must link to the grading repository and revised report.')
+    if GRADING_URL not in readme:
+        raise ValueError('The README must link to the grading repository.')
     renderSVG.drawToFile(architecture_drawing(), str(ROOT / ARCHITECTURE_PATH))
     OUTPUT.parent.mkdir(exist_ok=True)
     doc = Submission(str(OUTPUT), pagesize=A4, title='FitPilot · GitHub repository submission',
@@ -237,8 +237,7 @@ def main() -> None:
         Paragraph('FitPilot', STYLES['cover_title']),
         Paragraph('Course Project Artifacts Submission · CSIT6000V', STYLES['cover_subtitle']),
         Paragraph('1. GitHub repository', STYLES['section']),
-        Paragraph(link('Grading repository · grading-final', GRADING_URL), STYLES['body']),
-        Paragraph(link('Revised artifact report and README', REVISION_URL), STYLES['body']),
+        Paragraph(link(f'Grading repository · {GRADING_TAG}', GRADING_URL), STYLES['body']),
         Paragraph(f'Evaluated source commit · {link(SOURCE_SHA, f"{REPO}/tree/{SOURCE_SHA}")}', STYLES['body']),
         Paragraph('2. Group contributions', STYLES['section']),
     ]

@@ -1,13 +1,13 @@
 # Reproduce the FitPilot grading results
 
-The [final grading package](https://github.com/h4r1yzz/csit6000v-project/tree/grading-final) includes the app, evaluation inputs, instructions, and evidence. The evaluated source is [`ca94084617e3458ce639b7074debfe9029af3eb9`](https://github.com/h4r1yzz/csit6000v-project/tree/ca94084617e3458ce639b7074debfe9029af3eb9), also tagged `grading-submission-2026-11-21-v4`. The packaging commit adds evidence, the submission PDF, and a PostgreSQL Compose option. The runtime, case banks, and evaluation scripts match v4.
+The [final grading package](https://github.com/h4r1yzz/csit6000v-project/tree/grading-final) includes the app, evaluation inputs, instructions, and evidence. The evaluated source is [`ca94084617e3458ce639b7074debfe9029af3eb9`](https://github.com/h4r1yzz/csit6000v-project/tree/ca94084617e3458ce639b7074debfe9029af3eb9), also tagged `grading-submission-2026-11-21-v4`. The grading package includes later dashboard changes, the submission PDF, and a PostgreSQL Compose option. The backend workflow, case banks, and evaluation scripts match v4.
 
-From a Git checkout containing both tags, compare the application and experiment inputs directly. Expect no diff.
+From a Git checkout containing both tags, compare the evaluated backend and experiment inputs. Expect no diff.
 
 ```bash
 git diff --exit-code grading-submission-2026-11-21-v4 grading-final \
   -- backend/app backend/tacc/serve backend/requirements.txt backend/requirements-dev.txt \
-  database frontend evaluation/planning_cases.json evaluation/adaptation_cases.json \
+  database evaluation/planning_cases.json evaluation/adaptation_cases.json \
   scripts/dev.py scripts/tacc_connection.py scripts/verify.py scripts/smoke.py \
   scripts/evaluate.py scripts/evaluate_feedback.py scripts/summarize_evaluation.py
 ```
